@@ -3,10 +3,16 @@
 html, body {
   overflow-x: hidden;
   width: 100%;
+  max-width: 100vw;
+}
+
+html {
+  touch-action: manipulation;
 }
 
 input[type="number"] {
   -moz-appearance: textfield;
+  font-size: 16px;
 }
 
 input[type="number"]::-webkit-inner-spin-button,
