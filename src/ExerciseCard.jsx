@@ -20,6 +20,9 @@ function ExerciseCard({ exercise, exIndex, onAddSet, onUpdateSet, onDoneSet, bes
             type="number"
             inputMode="decimal"
             placeholder="kg"
+            data-ex={exIndex}
+            data-set={j}
+            data-field="kg"
             value={set.kg}
             onChange={(e) => onUpdateSet(exIndex, j, 'kg', e.target.value)}
             disabled={set.done}
@@ -33,6 +36,9 @@ function ExerciseCard({ exercise, exIndex, onAddSet, onUpdateSet, onDoneSet, bes
             type="number"
             inputMode="numeric"
             placeholder="reps"
+            data-ex={exIndex}
+            data-set={j}
+            data-field="reps"
             value={set.reps}
             onChange={(e) => onUpdateSet(exIndex, j, 'reps', e.target.value)}
             disabled={set.done}
@@ -65,7 +71,7 @@ function ExerciseCard({ exercise, exIndex, onAddSet, onUpdateSet, onDoneSet, bes
         onClick={() => onAddSet(exIndex)}
         className="w-full py-3 mt-3 border border-dashed border-[#2A2A4A] rounded-xl text-[#555] text-xs font-semibold hover:border-[#7B7BFF] hover:text-[#7B7BFF] transition-colors"
       >
-        + Add set
+        + Tilføj sæt
       </button>
     </div>
   )
