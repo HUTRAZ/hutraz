@@ -34,7 +34,7 @@ function App() {
     if (!restActive) return
     if (restTime <= 0) {
       setRestActive(false)
-      alert('Hvil er ovre!')
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200])
       return
     }
     const timer = setTimeout(() => {
@@ -120,32 +120,57 @@ function App() {
   }
 
   return (
-    <div>
-      <h1>Hutraz</h1>
+    <div className="min-h-screen bg-[#0D0D1A] text-white px-4 py-6 max-w-md mx-auto">
+      <h1 className="text-2xl font-bold tracking-tight mb-6">HUTRAZ</h1>
 
       {templates.length > 0 && exercises.length === 0 && (
-        <div>
-          <h3>Templates</h3>
-          {templates.map((t, i) => (
-            <button key={i} onClick={() => loadTemplate(t)}>
-              {t.name} ({t.exercises.length} øvelser)
-            </button>
-          ))}
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold text-[#7B7BFF] uppercase tracking-wide mb-3">Templates</h3>
+          <div className="flex flex-wrap gap-2">
+            {templates.map((t, i) => (
+              <button
+                key={i}
+                onClick={() => loadTemplate(t)}
+                className="bg-[#13132A] border border-[#232340] rounded-xl px-4 py-3 text-sm font-semibold hover:border-[#7B7BFF] transition-colors"
+              >
+                {t.name} ({t.exercises.length} øvelser)
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
-      <input
-        type="text"
-        placeholder="Øvelsesnavn"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
-      <button onClick={addExercise}>Tilføj øvelse</button>
+      <div className="flex gap-2 mb-6">
+        <input
+          type="text"
+          placeholder="Øvelsesnavn"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && addExercise()}
+          className="flex-1 bg-[#1C1C38] border border-[#2A2A4A] rounded-xl px-4 py-3 text-white placeholder-[#3a3a55] outline-none focus:border-[#7B7BFF] transition-colors"
+        />
+        <button
+          onClick={addExercise}
+          className="bg-[#7B7BFF] rounded-xl px-5 py-3 font-bold text-sm hover:bg-[#6060DD] transition-colors"
+        >
+          Tilføj
+        </button>
+      </div>
 
       {restActive && (
-        <div>
-          <strong>Hvil: {Math.floor(restTime / 60)}:{String(restTime % 60).padStart(2, '0')}</strong>
-          <button onClick={() => setRestActive(false)}>Skip</button>
+        <div className="bg-[#13132A] border border-[#5BF5A0]/20 rounded-xl p-4 mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-2 h-2 bg-[#5BF5A0] rounded-full animate-pulse" />
+            <span className="text-[#5BF5A0] font-bold text-lg tabular-nums">
+              {Math.floor(restTime / 60)}:{String(restTime % 60).padStart(2, '0')}
+            </span>
+          </div>
+          <button
+            onClick={() => setRestActive(false)}
+            className="border border-[#5BF5A0]/30 text-[#5BF5A0] text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-[#5BF5A0]/10 transition-colors"
+          >
+            Skip
+          </button>
         </div>
       )}
 
@@ -162,23 +187,33 @@ function App() {
       ))}
 
       {exercises.length > 0 && (
-        <div>
-          <button onClick={finishWorkout}>Afslut workout</button>
-          <button onClick={saveTemplate}>Gem som template</button>
+        <div className="flex flex-col gap-3 mt-4 mb-6">
+          <button
+            onClick={finishWorkout}
+            className="w-full py-4 bg-gradient-to-r from-[#7B7BFF] to-[#6060DD] rounded-2xl font-bold text-base shadow-lg shadow-[#7B7BFF]/25 hover:translate-y-[-1px] active:translate-y-[1px] transition-transform"
+          >
+            Afslut workout
+          </button>
+          <button
+            onClick={saveTemplate}
+            className="w-full py-3 border border-dashed border-[#2A2A4A] rounded-2xl text-[#555] text-sm font-semibold hover:border-[#7B7BFF] hover:text-[#7B7BFF] transition-colors"
+          >
+            Gem som template
+          </button>
         </div>
       )}
 
       {history.length > 0 && (
-        <div>
-          <h2>Tidligere workouts</h2>
+        <div className="mt-8">
+          <h2 className="text-sm font-semibold text-[#7B7BFF] uppercase tracking-wide mb-4">Tidligere workouts</h2>
           {history.map((w, i) => (
-            <div key={i}>
-              <h4>{w.date}</h4>
+            <div key={i} className="bg-[#13132A] border border-[#232340] rounded-xl p-4 mb-3">
+              <h4 className="text-sm font-bold mb-2">{w.date}</h4>
               {w.exercises.map((ex, j) => (
-                <div key={j}>
-                  <strong>{ex.name}</strong>
+                <div key={j} className="mb-2">
+                  <div className="text-sm font-semibold text-[#B8B8FF]">{ex.name}</div>
                   {ex.sets.map((set, k) => (
-                    <div key={k}>
+                    <div key={k} className="text-xs text-[#555] ml-3">
                       Sæt {k + 1}: {set.kg} kg x {set.reps} reps
                     </div>
                   ))}
