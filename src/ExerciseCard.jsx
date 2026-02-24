@@ -65,7 +65,7 @@ function ExerciseCard({ exercise, exIndex, onAddSet, onUpdateSet, onDoneSet, bes
         onClick={() => onAddSet(exIndex)}
         className="w-full py-3 mt-3 border border-dashed border-[#2A2A4A] rounded-xl text-[#555] text-xs font-semibold hover:border-[#7B7BFF] hover:text-[#7B7BFF] transition-colors"
       >
-        + Tilføj sæt
+        + Add set
       </button>
     </div>
   )
