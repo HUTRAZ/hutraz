@@ -6,7 +6,7 @@ function ExerciseCard({ exercise, exIndex, onAddSet, onUpdateSet, onDoneSet, bes
         <div className="text-xs text-[#4a4a6a] mt-1">PR: {bestSet.kg} kg x {bestSet.reps} reps</div>
       )}
 
-      <div className="grid grid-cols-[36px_1fr_1fr_40px] gap-2 mt-4 mb-2">
+      <div className="grid grid-cols-[32px_1fr_1fr_36px] gap-1.5 mt-4 mb-2">
         <span className="text-[10px] font-bold text-[#444] uppercase text-center">Set</span>
         <span className="text-[10px] font-bold text-[#444] uppercase text-center">KG</span>
         <span className="text-[10px] font-bold text-[#444] uppercase text-center">Reps</span>
@@ -14,7 +14,7 @@ function ExerciseCard({ exercise, exIndex, onAddSet, onUpdateSet, onDoneSet, bes
       </div>
 
       {exercise.sets.map((set, j) => (
-        <div key={j} className="grid grid-cols-[36px_1fr_1fr_40px] gap-2 items-center mb-2">
+        <div key={j} className="grid grid-cols-[32px_1fr_1fr_36px] gap-1.5 items-center mb-2">
           <span className="text-sm font-bold text-[#666] text-center">{j + 1}</span>
           <input
             type="number"
@@ -23,7 +23,7 @@ function ExerciseCard({ exercise, exIndex, onAddSet, onUpdateSet, onDoneSet, bes
             value={set.kg}
             onChange={(e) => onUpdateSet(exIndex, j, 'kg', e.target.value)}
             disabled={set.done}
-            className={`bg-[#1C1C38] border rounded-xl px-3 py-2 text-center font-bold outline-none transition-all
+            className={`w-full min-w-0 bg-[#1C1C38] border rounded-xl px-2 py-2 text-center text-sm font-bold outline-none transition-all
               ${set.done
                 ? 'border-[#7B7BFF]/25 bg-[#7B7BFF]/5 text-[#B8B8FF]'
                 : 'border-[#2A2A4A] text-white placeholder-[#3a3a55] focus:border-[#7B7BFF] focus:shadow-[0_0_0_3px_rgba(123,123,255,0.15)]'
@@ -36,7 +36,7 @@ function ExerciseCard({ exercise, exIndex, onAddSet, onUpdateSet, onDoneSet, bes
             value={set.reps}
             onChange={(e) => onUpdateSet(exIndex, j, 'reps', e.target.value)}
             disabled={set.done}
-            className={`bg-[#1C1C38] border rounded-xl px-3 py-2 text-center font-bold outline-none transition-all
+            className={`w-full min-w-0 bg-[#1C1C38] border rounded-xl px-2 py-2 text-center text-sm font-bold outline-none transition-all
               ${set.done
                 ? 'border-[#7B7BFF]/25 bg-[#7B7BFF]/5 text-[#B8B8FF]'
                 : 'border-[#2A2A4A] text-white placeholder-[#3a3a55] focus:border-[#7B7BFF] focus:shadow-[0_0_0_3px_rgba(123,123,255,0.15)]'
