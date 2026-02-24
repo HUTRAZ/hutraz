@@ -1,0 +1,17 @@
+{
+  "name": "Hutraz",
+  "short_name": "Hutraz",
+  "description": "Simple tracking. Real progress.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0D0D1A",
+  "theme_color": "#7B7BFF",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
