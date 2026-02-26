@@ -113,6 +113,15 @@ function App() {
     }, 50)
   }
 
+  function deleteSet(exIndex, setIndex) {
+    const newExercises = [...exercises]
+    newExercises[exIndex].sets.splice(setIndex, 1)
+    if (newExercises[exIndex].sets.length === 0) {
+      newExercises.splice(exIndex, 1)
+    }
+    setExercises(newExercises)
+  }
+
   function updateSet(exIndex, setIndex, field, value) {
     const newExercises = [...exercises]
     newExercises[exIndex].sets[setIndex][field] = value
