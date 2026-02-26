@@ -6,8 +6,10 @@ function ExerciseCard({ exercise, exIndex, onAddSet, onUpdateSet, onDoneSet, onD
   const [showRestPicker, setShowRestPicker] = useState(false)
   const [showNoteInput, setShowNoteInput] = useState(false)
   const [swipedSet, setSwipedSet] = useState(null)
-  const touchStartRef = useRef(null)
+  const touchStartRef = useRef({ x: 0, y: 0 })
   const touchDeltaRef = useRef(0)
+  const isSwipingRef = useRef(false)
+  const rowRefs = useRef({})
 
   function formatTime(seconds) {
     const m = Math.floor(seconds / 60)
@@ -16,33 +18,74 @@ function ExerciseCard({ exercise, exIndex, onAddSet, onUpdateSet, onDoneSet, onD
   }
 
   function handleTouchStart(e, setIndex) {
-    touchStartRef.current = e.touches[0].clientX
+    touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
     touchDeltaRef.current = 0
+    isSwipingRef.current = false
   }
 
   function handleTouchMove(e, setIndex) {
-    if (touchStartRef.current === null) return
-    const delta = touchStartRef.current - e.touches[0].clientX
-    touchDeltaRef.current = delta
+    const deltaX = touchStartRef.current.x - e.touches[0].clientX
+    const deltaY = Math.abs(touchStartRef.current.y - e.touches[0].clientY)
+
+    if (!isSwipingRef.current && deltaX > 10 && deltaX > deltaY) {
+      isSwipingRef.current = true
+    }
+
+    if (!isSwipingRef.current) return
+
+    touchDeltaRef.current = deltaX
+    const el = rowRefs.current[setIndex]
+    if (el && deltaX > 0) {
+      el.style.transform = `translateX(${Math.max(-80, -deltaX)}px)`
+      el.style.transition = 'none'
+    }
   }
 
   function handleTouchEnd(e, setIndex) {
+    const el = rowRefs.current[setIndex]
+    if (!el) return
+
+    el.style.transition = 'transform 0.2s ease'
+
     if (touchDeltaRef.current > 60) {
+      el.style.transform = 'translateX(-80px)'
+      if (swipedSet !== null && swipedSet !== setIndex) {
+        const prevEl = rowRefs.current[swipedSet]
+        if (prevEl) {
+          prevEl.style.transition = 'transform 0.2s ease'
+          prevEl.style.transform = 'translateX(0)'
+        }
+      }
       setSwipedSet(setIndex)
     } else {
-      setSwipedSet(null)
+      el.style.transform = 'translateX(0)'
+      if (swipedSet === setIndex) setSwipedSet(null)
     }
-    touchStartRef.current = null
+
+    touchStartRef.current = { x: 0, y: 0 }
     touchDeltaRef.current = 0
+    isSwipingRef.current = false
   }
 
   function confirmDelete(setIndex) {
-    onDeleteSet(exIndex, setIndex)
+    const el = rowRefs.current[setIndex]
+    if (el) {
+      el.style.transition = 'transform 0.2s ease'
+      el.style.transform = 'translateX(0)'
+    }
     setSwipedSet(null)
+    onDeleteSet(exIndex, setIndex)
   }
 
-  function cancelSwipe() {
-    setSwipedSet(null)
+  function tapOutside(setIndex) {
+    if (swipedSet !== null && swipedSet !== setIndex) {
+      const el = rowRefs.current[swipedSet]
+      if (el) {
+        el.style.transition = 'transform 0.2s ease'
+        el.style.transform = 'translateX(0)'
+      }
+      setSwipedSet(null)
+    }
   }
 
   const currentRest = exercise.restOverride !== null && exercise.restOverride !== undefined
@@ -174,87 +217,83 @@ function ExerciseCard({ exercise, exIndex, onAddSet, onUpdateSet, onDoneSet, onD
 
         return (
           <div key={j}>
-            {/* Set row */}
-            <div
-              className={`grid ${hasPrevious ? 'grid-cols-[32px_50px_1fr_1fr_36px]' : 'grid-cols-[32px_1fr_1fr_36px]'} gap-1.5 items-center mb-1`}
-              onTouchStart={(e) => handleTouchStart(e, j)}
-              onTouchMove={(e) => handleTouchMove(e, j)}
-              onTouchEnd={(e) => handleTouchEnd(e, j)}
-            >
-              <span className="text-sm font-bold text-[#666] text-center">{j + 1}</span>
-              {hasPrevious && (
-                <span className="text-[10px] text-[#4a4a6a] text-center font-medium italic">
-                  {prevSet ? `${prevSet.kg}×${prevSet.reps}` : '—'}
-                </span>
-              )}
-              <input
-                type="number"
-                inputMode="decimal"
-                placeholder="kg"
-                data-ex={exIndex}
-                data-set={j}
-                data-field="kg"
-                value={set.kg}
-                onChange={(e) => onUpdateSet(exIndex, j, 'kg', e.target.value)}
-                disabled={set.done}
-                className={`w-full min-w-0 bg-[#1C1C38] border rounded-xl px-2 py-2 text-center text-sm font-bold outline-none transition-all
-                  ${set.done
-                    ? 'border-[#7B7BFF]/25 bg-[#7B7BFF]/5 text-[#B8B8FF]'
-                    : 'border-[#2A2A4A] text-white placeholder-[#3a3a55] focus:border-[#7B7BFF] focus:shadow-[0_0_0_3px_rgba(123,123,255,0.15)]'
-                  }`}
-              />
-              <input
-                type="number"
-                inputMode="numeric"
-                placeholder="reps"
-                data-ex={exIndex}
-                data-set={j}
-                data-field="reps"
-                value={set.reps}
-                onChange={(e) => onUpdateSet(exIndex, j, 'reps', e.target.value)}
-                disabled={set.done}
-                className={`w-full min-w-0 bg-[#1C1C38] border rounded-xl px-2 py-2 text-center text-sm font-bold outline-none transition-all
-                  ${set.done
-                    ? 'border-[#7B7BFF]/25 bg-[#7B7BFF]/5 text-[#B8B8FF]'
-                    : 'border-[#2A2A4A] text-white placeholder-[#3a3a55] focus:border-[#7B7BFF] focus:shadow-[0_0_0_3px_rgba(123,123,255,0.15)]'
-                  }`}
-              />
-              {set.done ? (
-                <div className="w-8 h-8 bg-[#5BF5A0] rounded-lg flex items-center justify-center mx-auto">
-                  <svg viewBox="0 0 24 24" fill="none" strokeWidth="3" strokeLinecap="round" className="w-4 h-4 stroke-[#0D0D1A]">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                </div>
-              ) : (
-                <button
-                  onClick={() => onDoneSet(exIndex, j)}
-                  className="w-8 h-8 border-2 border-[#2A2A4A] rounded-lg flex items-center justify-center mx-auto hover:border-[#5BF5A0] transition-colors active:scale-90"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" strokeWidth="3" strokeLinecap="round" className="w-4 h-4 stroke-[#3a3a55]">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                </button>
-              )}
-            </div>
+            {/* Swipeable container */}
+            <div className="relative overflow-hidden rounded-lg mb-1" style={{ height: '36px' }}>
+              {/* Delete button behind */}
+              <button
+                onClick={() => confirmDelete(j)}
+                className="absolute right-0 top-0 bottom-0 w-20 flex items-center justify-center bg-red-500 rounded-r-lg z-0"
+              >
+                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="w-4 h-4 stroke-white mr-1">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+                <span className="text-white text-xs font-bold">Delete</span>
+              </button>
 
-            {/* Delete confirmation */}
-            {isSwiped && (
-              <div className="flex items-center justify-center gap-3 py-2 my-1">
-                <span className="text-xs text-[#888]">Delete set {j + 1}?</span>
-                <button
-                  onClick={() => confirmDelete(j)}
-                  className="px-3 py-1.5 bg-red-500 rounded-lg text-white text-xs font-bold"
-                >
-                  Delete
-                </button>
-                <button
-                  onClick={() => cancelSwipe()}
-                  className="px-3 py-1.5 border border-[#2A2A4A] rounded-lg text-[#888] text-xs font-semibold"
-                >
-                  Cancel
-                </button>
+              {/* Set row - slides over delete button */}
+              <div
+                ref={(el) => { rowRefs.current[j] = el }}
+                className={`grid ${hasPrevious ? 'grid-cols-[32px_50px_1fr_1fr_36px]' : 'grid-cols-[32px_1fr_1fr_36px]'} gap-1.5 items-center bg-[#13132A] relative z-10 h-full`}
+                onTouchStart={(e) => { tapOutside(j); handleTouchStart(e, j) }}
+                onTouchMove={(e) => handleTouchMove(e, j)}
+                onTouchEnd={(e) => handleTouchEnd(e, j)}
+              >
+                <span className="text-sm font-bold text-[#666] text-center">{j + 1}</span>
+                {hasPrevious && (
+                  <span className="text-[10px] text-[#4a4a6a] text-center font-medium italic">
+                    {prevSet ? `${prevSet.kg}×${prevSet.reps}` : '—'}
+                  </span>
+                )}
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  placeholder="kg"
+                  data-ex={exIndex}
+                  data-set={j}
+                  data-field="kg"
+                  value={set.kg}
+                  onChange={(e) => onUpdateSet(exIndex, j, 'kg', e.target.value)}
+                  disabled={set.done}
+                  className={`w-full min-w-0 bg-[#1C1C38] border rounded-xl px-2 py-2 text-center text-sm font-bold outline-none transition-all
+                    ${set.done
+                      ? 'border-[#7B7BFF]/25 bg-[#7B7BFF]/5 text-[#B8B8FF]'
+                      : 'border-[#2A2A4A] text-white placeholder-[#3a3a55] focus:border-[#7B7BFF] focus:shadow-[0_0_0_3px_rgba(123,123,255,0.15)]'
+                    }`}
+                />
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="reps"
+                  data-ex={exIndex}
+                  data-set={j}
+                  data-field="reps"
+                  value={set.reps}
+                  onChange={(e) => onUpdateSet(exIndex, j, 'reps', e.target.value)}
+                  disabled={set.done}
+                  className={`w-full min-w-0 bg-[#1C1C38] border rounded-xl px-2 py-2 text-center text-sm font-bold outline-none transition-all
+                    ${set.done
+                      ? 'border-[#7B7BFF]/25 bg-[#7B7BFF]/5 text-[#B8B8FF]'
+                      : 'border-[#2A2A4A] text-white placeholder-[#3a3a55] focus:border-[#7B7BFF] focus:shadow-[0_0_0_3px_rgba(123,123,255,0.15)]'
+                    }`}
+                />
+                {set.done ? (
+                  <div className="w-8 h-8 bg-[#5BF5A0] rounded-lg flex items-center justify-center mx-auto">
+                    <svg viewBox="0 0 24 24" fill="none" strokeWidth="3" strokeLinecap="round" className="w-4 h-4 stroke-[#0D0D1A]">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => onDoneSet(exIndex, j)}
+                    className="w-8 h-8 border-2 border-[#2A2A4A] rounded-lg flex items-center justify-center mx-auto hover:border-[#5BF5A0] transition-colors active:scale-90"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" strokeWidth="3" strokeLinecap="round" className="w-4 h-4 stroke-[#3a3a55]">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </button>
+                )}
               </div>
-            )}
+            </div>
 
             {/* Active rest timer inline */}
             {isActiveRest && (
