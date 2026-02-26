@@ -402,6 +402,7 @@ function App() {
                   onDoneSet={doneSet}
                   onUpdateExerciseRest={updateExerciseRest}
                   onUpdateExerciseNote={updateExerciseNote}
+                  onDeleteSet={deleteSet}
                   bestSet={getBestSet(ex.name)}
                   previousSets={getPreviousSets(ex.name)}
                   activeRest={activeRest}
