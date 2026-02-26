@@ -91,7 +91,7 @@ function App() {
   function finishWorkout() {
     if (exercises.length === 0) return
     const workout = {
-      date: new Date().toLocaleDateString('da-DK'),
+      date: new Date().toLocaleDateString('en-GB'),
       exercises: exercises
     }
     setHistory([workout, ...history])
@@ -102,7 +102,7 @@ function App() {
 
   function saveTemplate() {
     if (exercises.length === 0) return
-    const templateName = prompt('Navn på template:')
+    const templateName = prompt('Template name:')
     if (!templateName) return
     const template = {
       name: templateName,
@@ -155,43 +155,62 @@ function App() {
       <div className="min-h-screen bg-[#0D0D1A] text-white pb-24">
         <div className="px-4 py-6 max-w-md mx-auto">
 
-          {/* PROGRESS - placeholder */}
+          {/* PROGRESS - stats and history */}
           {page === 'progress' && (
             <div>
               <h1 className="text-2xl font-bold tracking-tight mb-6">Progress</h1>
-              <div className="text-center py-20">
-                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="w-12 h-12 stroke-[#2A2A4A] mx-auto mb-4">
-                  <path d="M18 20V10M12 20V4M6 20v-6"/>
-                </svg>
-                <div className="text-[#555] text-sm">Kommer snart</div>
-                <div className="text-[#444] text-xs mt-2">Grafer og progression over tid</div>
+
+              {/* Stats */}
+              <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-5 mb-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-2xl font-bold">{history.length}</div>
+                    <div className="text-xs text-[#555]">Workouts</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">
+                      {history.reduce((sum, w) => sum + w.exercises.reduce((s, ex) => s + ex.sets.length, 0), 0)}
+                    </div>
+                    <div className="text-xs text-[#555]">Sets logged</div>
+                  </div>
+                </div>
               </div>
+
+              {/* Recent workouts */}
+              {history.length > 0 ? (
+                <div>
+                  <h3 className="text-sm font-semibold text-[#7B7BFF] uppercase tracking-wide mb-3">Recent workouts</h3>
+                  {history.slice(0, 10).map((w, i) => (
+                    <div key={i} className="bg-[#13132A] border border-[#232340] rounded-xl p-4 mb-3">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-bold">{w.date}</span>
+                        <span className="text-xs text-[#555]">{w.exercises.length} exercises</span>
+                      </div>
+                      {w.exercises.map((ex, j) => (
+                        <div key={j} className="text-xs text-[#666] ml-1">
+                          {ex.name} — {ex.sets.length} sets
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="w-12 h-12 stroke-[#2A2A4A] mx-auto mb-4">
+                    <path d="M18 20V10M12 20V4M6 20v-6"/>
+                  </svg>
+                  <div className="text-[#555] text-sm">No workouts yet</div>
+                  <div className="text-[#444] text-xs mt-2">Complete a workout to see your progress</div>
+                </div>
+              )}
             </div>
           )}
 
-          {/* WORKOUT - all content */}
+          {/* WORKOUT */}
           {page === 'workout' && (
             <div>
               <h1 className="text-2xl font-bold tracking-tight mb-1">HUTRAZ</h1>
               <p className="text-xs text-[#7B7BFF] mb-6">Simple tracking. Real progress.</p>
-
-              {/* Stats */}
-              {history.length > 0 && (
-                <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-5 mb-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <div className="text-2xl font-bold">{history.length}</div>
-                      <div className="text-xs text-[#555]">Workouts</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold">
-                        {history.reduce((sum, w) => sum + w.exercises.reduce((s, ex) => s + ex.sets.length, 0), 0)}
-                      </div>
-                      <div className="text-xs text-[#555]">Sæt logget</div>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* Templates */}
               {templates.length > 0 && exercises.length === 0 && (
@@ -202,10 +221,10 @@ function App() {
                       <div key={i} className="bg-[#13132A] border border-[#232340] rounded-xl p-4">
                         <div className="flex justify-between items-center mb-2">
                           <span className="font-bold text-sm">{t.name}</span>
-                          <span className="text-xs text-[#555]">{t.exercises.length} øvelser</span>
+                          <span className="text-xs text-[#555]">{t.exercises.length} exercises</span>
                         </div>
                         {t.exercises.map((ex, j) => (
-                          <div key={j} className="text-xs text-[#666] ml-1 mb-0.5">{ex.name} — {ex.sets} sæt</div>
+                          <div key={j} className="text-xs text-[#666] ml-1 mb-0.5">{ex.name} — {ex.sets} sets</div>
                         ))}
                         <div className="flex gap-2 mt-3">
                           <button
@@ -218,7 +237,7 @@ function App() {
                             onClick={() => deleteTemplate(i)}
                             className="py-2.5 px-4 border border-[#2A2A4A] rounded-xl text-xs font-semibold text-[#555] hover:border-red-500/50 hover:text-red-400 transition-colors"
                           >
-                            Slet
+                            Delete
                           </button>
                         </div>
                       </div>
@@ -231,7 +250,7 @@ function App() {
               <div className="flex gap-2 mb-6">
                 <input
                   type="text"
-                  placeholder="Øvelsesnavn"
+                  placeholder="Exercise name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && addExercise()}
@@ -241,7 +260,7 @@ function App() {
                   onClick={addExercise}
                   className="bg-[#7B7BFF] rounded-xl px-5 py-3 font-bold text-sm hover:bg-[#6060DD] transition-colors"
                 >
-                  Tilføj
+                  Add
                 </button>
               </div>
 
@@ -283,34 +302,14 @@ function App() {
                     onClick={finishWorkout}
                     className="w-full py-4 bg-gradient-to-r from-[#7B7BFF] to-[#6060DD] rounded-2xl font-bold text-base shadow-lg shadow-[#7B7BFF]/25 hover:translate-y-[-1px] active:translate-y-[1px] transition-transform"
                   >
-                    Afslut workout
+                    Finish workout
                   </button>
                   <button
                     onClick={saveTemplate}
                     className="w-full py-3 border border-dashed border-[#2A2A4A] rounded-2xl text-[#555] text-sm font-semibold hover:border-[#7B7BFF] hover:text-[#7B7BFF] transition-colors"
                   >
-                    Gem som template
+                    Save as template
                   </button>
-                </div>
-              )}
-
-              {/* Recent workouts */}
-              {history.length > 0 && exercises.length === 0 && (
-                <div className="mt-6">
-                  <h3 className="text-sm font-semibold text-[#7B7BFF] uppercase tracking-wide mb-3">Seneste workouts</h3>
-                  {history.slice(0, 5).map((w, i) => (
-                    <div key={i} className="bg-[#13132A] border border-[#232340] rounded-xl p-4 mb-3">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-bold">{w.date}</span>
-                        <span className="text-xs text-[#555]">{w.exercises.length} øvelser</span>
-                      </div>
-                      {w.exercises.map((ex, j) => (
-                        <div key={j} className="text-xs text-[#666] ml-1">
-                          {ex.name} — {ex.sets.length} sæt
-                        </div>
-                      ))}
-                    </div>
-                  ))}
                 </div>
               )}
             </div>
@@ -324,8 +323,8 @@ function App() {
                 <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="w-12 h-12 stroke-[#2A2A4A] mx-auto mb-4">
                   <circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/>
                 </svg>
-                <div className="text-[#555] text-sm">Kommer snart</div>
-                <div className="text-[#444] text-xs mt-2">Indstillinger og profil</div>
+                <div className="text-[#555] text-sm">Coming soon</div>
+                <div className="text-[#444] text-xs mt-2">Settings and profile</div>
               </div>
             </div>
           )}
