@@ -470,9 +470,9 @@ function App() {
                 </div>
               )}
 
-              {/* TEMPLATE FOLDERS */}
+             {/* TEMPLATE FOLDERS */}
               <div className="mt-8 border-t border-[#1a1a30] pt-6">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-semibold text-[#7B7BFF] uppercase tracking-wide">Templates</h3>
                   <button
                     onClick={addFolder}
@@ -480,6 +480,9 @@ function App() {
                   >
                     + Folder
                   </button>
+                </div>
+                <div className="text-[10px] text-[#444] mb-4">
+                  Tap folder to open/close · Use <span className="inline-flex flex-col align-middle mx-0.5"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-2.5 h-2.5 stroke-[#555]"><polyline points="18 15 12 9 6 15"/></svg><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-2.5 h-2.5 stroke-[#555]"><polyline points="6 9 12 15 18 9"/></svg></span> to reorder
                 </div>
 
                 {folders.map((folder, fi) => (
