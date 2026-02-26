@@ -184,14 +184,12 @@ function ExerciseCard({ exercise, exIndex, onAddSet, onUpdateSet, onDoneSet, onD
           <div key={j}>
             {/* Swipeable set row wrapper */}
             <div className="relative overflow-hidden rounded-lg mb-1">
-              {/* Delete button behind */}
-              <div className="absolute right-0 top-0 bottom-0 w-20 flex items-center justify-center bg-red-500/90 rounded-r-lg">
-                <button
-                  onClick={() => confirmDelete(j)}
-                  className="text-white text-xs font-bold"
-                >
-                  Delete
-                </button>
+             {/* Delete button behind */}
+              <div
+                className="absolute right-0 top-0 bottom-0 w-20 flex items-center justify-center bg-red-500/90 rounded-r-lg cursor-pointer"
+                onPointerUp={(e) => { e.stopPropagation(); confirmDelete(j) }}
+              >
+                <span className="text-white text-xs font-bold pointer-events-none">Delete</span>
               </div>
 
               {/* Set row - swipeable */}
