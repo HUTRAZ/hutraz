@@ -14,9 +14,18 @@ function App() {
     const saved = localStorage.getItem('history')
     return saved ? JSON.parse(saved) : []
   })
-  const [templates, setTemplates] = useState(() => {
-    const saved = localStorage.getItem('templates')
-    return saved ? JSON.parse(saved) : []
+  const [folders, setFolders] = useState(() => {
+    const saved = localStorage.getItem('folders')
+    if (saved) return JSON.parse(saved)
+    // Migrate old templates to default folder
+    const oldTemplates = localStorage.getItem('templates')
+    if (oldTemplates) {
+      const templates = JSON.parse(oldTemplates)
+      if (templates.length > 0) {
+        return [{ name: 'My Templates', open: true, templates }]
+      }
+    }
+    return [{ name: 'My Templates', open: true, templates: [] }]
   })
   const [defaultRest, setDefaultRest] = useState(() => {
     const saved = localStorage.getItem('defaultRest')
@@ -27,6 +36,9 @@ function App() {
   const [restTime, setRestTime] = useState(0)
   const [restDuration, setRestDuration] = useState(90)
   const [showFinishModal, setShowFinishModal] = useState(false)
+  const [editingFolder, setEditingFolder] = useState(null)
+  const [editingFolderName, setEditingFolderName] = useState('')
+  const [showSaveModal, setShowSaveModal] = useState(false)
   const restStartRef = useRef(null)
 
   useEffect(() => {
@@ -43,8 +55,8 @@ function App() {
   }, [history])
 
   useEffect(() => {
-    localStorage.setItem('templates', JSON.stringify(templates))
-  }, [templates])
+    localStorage.setItem('folders', JSON.stringify(folders))
+  }, [folders])
 
   useEffect(() => {
     localStorage.setItem('defaultRest', String(defaultRest))
@@ -173,17 +185,19 @@ function App() {
     setHistory([workout, ...history])
 
     if (updateAllTemplates) {
-      const newTemplates = [...templates]
+      const newFolders = [...folders]
       for (const ex of exercises) {
-        for (const template of newTemplates) {
-          for (let i = 0; i < template.exercises.length; i++) {
-            if (template.exercises[i].name === ex.name) {
-              template.exercises[i].sets = ex.sets.map(set => ({ kg: set.kg, reps: set.reps }))
+        for (const folder of newFolders) {
+          for (const template of folder.templates) {
+            for (let i = 0; i < template.exercises.length; i++) {
+              if (template.exercises[i].name === ex.name) {
+                template.exercises[i].sets = ex.sets.map(set => ({ kg: set.kg, reps: set.reps }))
+              }
             }
           }
         }
       }
-      setTemplates(newTemplates)
+      setFolders(newFolders)
     }
 
     setExercises([])
@@ -194,8 +208,10 @@ function App() {
 
   function saveTemplate() {
     if (exercises.length === 0) return
-    const templateName = prompt('Template name:')
-    if (!templateName) return
+    setShowSaveModal(true)
+  }
+
+  function confirmSaveTemplate(folderIndex, templateName) {
     const template = {
       name: templateName,
       exercises: exercises.map(ex => ({
@@ -205,7 +221,10 @@ function App() {
         note: ex.note || ''
       }))
     }
-    setTemplates([...templates, template])
+    const newFolders = [...folders]
+    newFolders[folderIndex].templates.push(template)
+    setFolders(newFolders)
+    setShowSaveModal(false)
   }
 
   function loadTemplate(template) {
@@ -218,22 +237,91 @@ function App() {
     setExercises(newExercises)
   }
 
-  function updateTemplateNote(templateIndex, exIndex, value) {
-    const newTemplates = [...templates]
-    newTemplates[templateIndex].exercises[exIndex].note = value
-    setTemplates(newTemplates)
+  function deleteTemplate(folderIndex, templateIndex) {
+    const newFolders = [...folders]
+    newFolders[folderIndex].templates.splice(templateIndex, 1)
+    setFolders(newFolders)
   }
 
-  function deleteTemplateNote(templateIndex, exIndex) {
-    const newTemplates = [...templates]
-    newTemplates[templateIndex].exercises[exIndex].note = ''
-    setTemplates(newTemplates)
+  function deleteTemplateNote(folderIndex, templateIndex, exIndex) {
+    const newFolders = [...folders]
+    newFolders[folderIndex].templates[templateIndex].exercises[exIndex].note = ''
+    setFolders(newFolders)
   }
 
-  function deleteTemplate(index) {
-    const newTemplates = [...templates]
-    newTemplates.splice(index, 1)
-    setTemplates(newTemplates)
+  // Folder management
+  function addFolder() {
+    const newFolders = [...folders, { name: 'New Folder', open: true, templates: [] }]
+    setFolders(newFolders)
+    setEditingFolder(newFolders.length - 1)
+    setEditingFolderName('New Folder')
+  }
+
+  function toggleFolder(index) {
+    const newFolders = [...folders]
+    newFolders[index].open = !newFolders[index].open
+    setFolders(newFolders)
+  }
+
+  function startEditFolder(index) {
+    setEditingFolder(index)
+    setEditingFolderName(folders[index].name)
+  }
+
+  function confirmEditFolder() {
+    if (editingFolder === null) return
+    const newFolders = [...folders]
+    newFolders[editingFolder].name = editingFolderName || 'Untitled'
+    setFolders(newFolders)
+    setEditingFolder(null)
+  }
+
+  function deleteFolder(index) {
+    if (folders.length <= 1) return
+    const newFolders = [...folders]
+    // Move templates to first remaining folder
+    const remaining = newFolders.filter((_, i) => i !== index)
+    remaining[0].templates.push(...newFolders[index].templates)
+    setFolders(remaining)
+  }
+
+  function moveFolderUp(index) {
+    if (index === 0) return
+    const newFolders = [...folders]
+    const temp = newFolders[index - 1]
+    newFolders[index - 1] = newFolders[index]
+    newFolders[index] = temp
+    setFolders(newFolders)
+  }
+
+  function moveFolderDown(index) {
+    if (index >= folders.length - 1) return
+    const newFolders = [...folders]
+    const temp = newFolders[index + 1]
+    newFolders[index + 1] = newFolders[index]
+    newFolders[index] = temp
+    setFolders(newFolders)
+  }
+
+  function moveTemplateUp(folderIndex, templateIndex) {
+    if (templateIndex === 0) return
+    const newFolders = [...folders]
+    const t = newFolders[folderIndex].templates
+    const temp = t[templateIndex - 1]
+    t[templateIndex - 1] = t[templateIndex]
+    t[templateIndex] = temp
+    setFolders(newFolders)
+  }
+
+  function moveTemplateDown(folderIndex, templateIndex) {
+    const t = folders[folderIndex].templates
+    if (templateIndex >= t.length - 1) return
+    const newFolders = [...folders]
+    const temps = newFolders[folderIndex].templates
+    const temp = temps[templateIndex + 1]
+    temps[templateIndex + 1] = temps[templateIndex]
+    temps[templateIndex] = temp
+    setFolders(newFolders)
   }
 
   function getBestSet(exerciseName) {
@@ -327,54 +415,6 @@ function App() {
               <h1 className="text-2xl font-bold tracking-tight mb-1">HUTRAZ</h1>
               <p className="text-xs text-[#7B7BFF] mb-6">Simple tracking. Real progress.</p>
 
-              {templates.length > 0 && exercises.length === 0 && (
-                <div className="mb-6">
-                  <h3 className="text-sm font-semibold text-[#7B7BFF] uppercase tracking-wide mb-3">Templates</h3>
-                  <div className="flex flex-col gap-2">
-                    {templates.map((t, i) => (
-                      <div key={i} className="bg-[#13132A] border border-[#232340] rounded-xl p-4">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="font-bold text-sm">{t.name}</span>
-                          <span className="text-xs text-[#555]">{t.exercises.length} exercises</span>
-                        </div>
-                        {t.exercises.map((ex, j) => (
-                          <div key={j} className="ml-1 mb-1">
-                            <div className="text-xs text-[#666]">{ex.name} — {ex.sets.length} sets</div>
-                            {ex.note && (
-                              <div className="flex items-center gap-1 mt-0.5">
-                                <span className="text-[10px] text-[#4a4a6a] italic">"{ex.note}"</span>
-                                <button
-                                  onClick={() => deleteTemplateNote(i, j)}
-                                  className="text-[#3a3a55] hover:text-red-400 transition-colors"
-                                >
-                                  <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="w-3 h-3 stroke-current">
-                                    <path d="M18 6L6 18M6 6l12 12"/>
-                                  </svg>
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                        <div className="flex gap-2 mt-3">
-                          <button
-                            onClick={() => loadTemplate(t)}
-                            className="flex-1 py-2.5 bg-[#7B7BFF] rounded-xl text-sm font-bold hover:bg-[#6060DD] transition-colors"
-                          >
-                            Start workout
-                          </button>
-                          <button
-                            onClick={() => deleteTemplate(i)}
-                            className="py-2.5 px-4 border border-[#2A2A4A] rounded-xl text-xs font-semibold text-[#555] hover:border-red-500/50 hover:text-red-400 transition-colors"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               <div className="flex gap-2 mb-6">
                 <input
                   type="text"
@@ -400,9 +440,9 @@ function App() {
                   onAddSet={addSet}
                   onUpdateSet={updateSet}
                   onDoneSet={doneSet}
+                  onDeleteSet={deleteSet}
                   onUpdateExerciseRest={updateExerciseRest}
                   onUpdateExerciseNote={updateExerciseNote}
-                  onDeleteSet={deleteSet}
                   bestSet={getBestSet(ex.name)}
                   previousSets={getPreviousSets(ex.name)}
                   activeRest={activeRest}
@@ -414,7 +454,7 @@ function App() {
               ))}
 
               {exercises.length > 0 && (
-                <div className="flex flex-col gap-3 mt-4 mb-6">
+                <div className="flex flex-col gap-3 mt-4 mb-8">
                   <button
                     onClick={finishWorkout}
                     className="w-full py-4 bg-gradient-to-r from-[#7B7BFF] to-[#6060DD] rounded-2xl font-bold text-base shadow-lg shadow-[#7B7BFF]/25 hover:translate-y-[-1px] active:translate-y-[1px] transition-transform"
@@ -429,6 +469,181 @@ function App() {
                   </button>
                 </div>
               )}
+
+              {/* TEMPLATE FOLDERS */}
+              <div className="mt-8 border-t border-[#1a1a30] pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-[#7B7BFF] uppercase tracking-wide">Templates</h3>
+                  <button
+                    onClick={addFolder}
+                    className="text-[10px] font-semibold text-[#555] border border-[#2A2A4A] px-3 py-1.5 rounded-lg hover:border-[#7B7BFF] hover:text-[#7B7BFF] transition-colors"
+                  >
+                    + Folder
+                  </button>
+                </div>
+
+                {folders.map((folder, fi) => (
+                  <div key={fi} className="mb-3">
+                    {/* Folder header */}
+                    <div className="flex items-center gap-2 mb-1.5">
+                      {/* Reorder arrows */}
+                      <div className="flex flex-col">
+                        <button
+                          onClick={() => moveFolderUp(fi)}
+                          className={`text-[#444] p-0.5 ${fi === 0 ? 'opacity-20' : 'hover:text-[#7B7BFF]'}`}
+                          disabled={fi === 0}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-3 h-3 stroke-current">
+                            <polyline points="18 15 12 9 6 15"/>
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => moveFolderDown(fi)}
+                          className={`text-[#444] p-0.5 ${fi >= folders.length - 1 ? 'opacity-20' : 'hover:text-[#7B7BFF]'}`}
+                          disabled={fi >= folders.length - 1}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-3 h-3 stroke-current">
+                            <polyline points="6 9 12 15 18 9"/>
+                          </svg>
+                        </button>
+                      </div>
+
+                      {/* Folder icon + toggle */}
+                      <button onClick={() => toggleFolder(fi)} className="flex items-center gap-2 flex-1 min-w-0">
+                        <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                          className={`w-4 h-4 shrink-0 transition-colors ${folder.open ? 'stroke-[#7B7BFF] fill-[#7B7BFF]/10' : 'stroke-[#555]'}`}
+                        >
+                          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                        </svg>
+
+                        {editingFolder === fi ? (
+                          <input
+                            type="text"
+                            value={editingFolderName}
+                            onChange={(e) => setEditingFolderName(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && confirmEditFolder()}
+                            onBlur={confirmEditFolder}
+                            autoFocus
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-[#1C1C38] border border-[#7B7BFF] rounded-lg px-2 py-1 text-sm font-semibold text-white outline-none flex-1 min-w-0"
+                          />
+                        ) : (
+                          <span className="text-sm font-semibold truncate">{folder.name}</span>
+                        )}
+
+                        <span className="text-[10px] text-[#555] shrink-0">{folder.templates.length}</span>
+
+                        <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round"
+                          className={`w-3.5 h-3.5 stroke-[#444] shrink-0 transition-transform ${folder.open ? 'rotate-180' : ''}`}
+                        >
+                          <polyline points="6 9 12 15 18 9"/>
+                        </svg>
+                      </button>
+
+                      {/* Folder actions */}
+                      {editingFolder !== fi && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => startEditFolder(fi)}
+                            className="text-[#444] p-1 hover:text-[#7B7BFF] transition-colors"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 stroke-current">
+                              <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                            </svg>
+                          </button>
+                          {folders.length > 1 && (
+                            <button
+                              onClick={() => deleteFolder(fi)}
+                              className="text-[#444] p-1 hover:text-red-400 transition-colors"
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="w-3.5 h-3.5 stroke-current">
+                                <path d="M18 6L6 18M6 6l12 12"/>
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Folder contents */}
+                    {folder.open && (
+                      <div className="ml-7 border-l border-[#1a1a30] pl-3">
+                        {folder.templates.length === 0 ? (
+                          <div className="text-[10px] text-[#444] py-3 italic">No templates</div>
+                        ) : (
+                          folder.templates.map((t, ti) => (
+                            <div key={ti} className="bg-[#13132A] border border-[#232340] rounded-xl p-3.5 mb-2">
+                              <div className="flex items-center gap-2">
+                                {/* Reorder */}
+                                <div className="flex flex-col shrink-0">
+                                  <button
+                                    onClick={() => moveTemplateUp(fi, ti)}
+                                    className={`text-[#444] p-0.5 ${ti === 0 ? 'opacity-20' : 'hover:text-[#7B7BFF]'}`}
+                                    disabled={ti === 0}
+                                  >
+                                    <svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-2.5 h-2.5 stroke-current">
+                                      <polyline points="18 15 12 9 6 15"/>
+                                    </svg>
+                                  </button>
+                                  <button
+                                    onClick={() => moveTemplateDown(fi, ti)}
+                                    className={`text-[#444] p-0.5 ${ti >= folder.templates.length - 1 ? 'opacity-20' : 'hover:text-[#7B7BFF]'}`}
+                                    disabled={ti >= folder.templates.length - 1}
+                                  >
+                                    <svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-2.5 h-2.5 stroke-current">
+                                      <polyline points="6 9 12 15 18 9"/>
+                                    </svg>
+                                  </button>
+                                </div>
+
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex justify-between items-center mb-1.5">
+                                    <span className="font-bold text-sm truncate">{t.name}</span>
+                                    <span className="text-[10px] text-[#555] shrink-0 ml-2">{t.exercises.length} ex</span>
+                                  </div>
+                                  {t.exercises.map((ex, j) => (
+                                    <div key={j} className="ml-0.5 mb-0.5">
+                                      <span className="text-[10px] text-[#666]">{ex.name} — {ex.sets.length} sets</span>
+                                      {ex.note && (
+                                        <div className="flex items-center gap-1">
+                                          <span className="text-[9px] text-[#4a4a6a] italic">"{ex.note}"</span>
+                                          <button
+                                            onClick={() => deleteTemplateNote(fi, ti, j)}
+                                            className="text-[#3a3a55] hover:text-red-400"
+                                          >
+                                            <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="w-2.5 h-2.5 stroke-current">
+                                              <path d="M18 6L6 18M6 6l12 12"/>
+                                            </svg>
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div className="flex gap-2 mt-2.5">
+                                <button
+                                  onClick={() => loadTemplate(t)}
+                                  className="flex-1 py-2 bg-[#7B7BFF] rounded-lg text-xs font-bold hover:bg-[#6060DD] transition-colors"
+                                >
+                                  Start
+                                </button>
+                                <button
+                                  onClick={() => deleteTemplate(fi, ti)}
+                                  className="py-2 px-3 border border-[#2A2A4A] rounded-lg text-[10px] font-semibold text-[#555] hover:border-red-500/50 hover:text-red-400 transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -503,6 +718,15 @@ function App() {
           </div>
         )}
 
+        {/* SAVE TEMPLATE MODAL */}
+        {showSaveModal && (
+          <SaveTemplateModal
+            folders={folders}
+            onSave={confirmSaveTemplate}
+            onCancel={() => setShowSaveModal(false)}
+          />
+        )}
+
         {/* BOTTOM NAV */}
         <div className="fixed bottom-0 left-0 right-0 bg-[#0D0D1A]/95 backdrop-blur-xl border-t border-[#1a1a30] px-6 py-3 pb-8 flex justify-around max-w-md mx-auto">
           <button onClick={() => setPage('progress')} className={`flex flex-col items-center gap-1 ${page === 'progress' ? 'opacity-100' : 'opacity-40'}`}>
@@ -526,6 +750,81 @@ function App() {
         </div>
       </div>
     </>
+  )
+}
+
+// Save Template Modal - pick folder and name
+function SaveTemplateModal({ folders, onSave, onCancel }) {
+  const [templateName, setTemplateName] = useState('')
+  const [selectedFolder, setSelectedFolder] = useState(0)
+
+  function handleSave() {
+    if (!templateName) return
+    onSave(selectedFolder, templateName)
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end justify-center z-50">
+      <div className="w-full max-w-md bg-[#13132A] rounded-t-3xl p-6 pb-10">
+        <h2 className="text-lg font-bold text-center mb-5">Save as template</h2>
+
+        <div className="mb-4">
+          <div className="text-xs text-[#555] font-semibold uppercase tracking-wide mb-2">Template name</div>
+          <input
+            type="text"
+            placeholder="e.g. Push Day A"
+            value={templateName}
+            onChange={(e) => setTemplateName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+            autoFocus
+            className="w-full bg-[#1C1C38] border border-[#2A2A4A] rounded-xl px-4 py-3 text-white placeholder-[#3a3a55] outline-none focus:border-[#7B7BFF] transition-colors"
+          />
+        </div>
+
+        <div className="mb-5">
+          <div className="text-xs text-[#555] font-semibold uppercase tracking-wide mb-2">Save to folder</div>
+          <div className="flex flex-col gap-1.5">
+            {folders.map((folder, i) => (
+              <button
+                key={i}
+                onClick={() => setSelectedFolder(i)}
+                className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-left transition-all
+                  ${selectedFolder === i
+                    ? 'bg-[#7B7BFF]/15 border border-[#7B7BFF]/40 text-white'
+                    : 'bg-[#1C1C38] border border-[#2A2A4A] text-[#888]'
+                  }`}
+              >
+                <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                  className={`w-4 h-4 shrink-0 ${selectedFolder === i ? 'stroke-[#7B7BFF] fill-[#7B7BFF]/10' : 'stroke-[#555]'}`}
+                >
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                </svg>
+                {folder.name}
+                <span className="text-[10px] text-[#555] ml-auto">{folder.templates.length}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <button
+          onClick={handleSave}
+          className={`w-full py-4 rounded-2xl font-bold text-sm mb-3 transition-all ${
+            templateName
+              ? 'bg-gradient-to-r from-[#7B7BFF] to-[#6060DD] shadow-lg shadow-[#7B7BFF]/25'
+              : 'bg-[#1C1C38] text-[#555]'
+          }`}
+          disabled={!templateName}
+        >
+          Save template
+        </button>
+        <button
+          onClick={onCancel}
+          className="w-full py-3 text-sm font-semibold text-[#555]"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
   )
 }
 
