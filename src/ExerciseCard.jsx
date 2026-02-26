@@ -218,7 +218,7 @@ function ExerciseCard({ exercise, exIndex, onAddSet, onUpdateSet, onDoneSet, onD
         return (
           <div key={j}>
             {/* Swipeable container */}
-            <div className="relative overflow-hidden rounded-lg mb-1" style={{ height: '40px' }}>
+            <div className="relative overflow-hidden rounded-lg mb-1">
               {/* Delete button behind */}
               <button
                 onClick={() => confirmDelete(j)}
