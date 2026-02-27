@@ -109,7 +109,6 @@ function ExerciseCard({ exercise, exIndex, isEditing, exerciseCount, onMoveUp, o
   return (
     <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-5 mb-3">
 
-      {/* Edit mode toolbar */}
       {isEditing && (
         <div className="flex items-center justify-between mb-3 pb-2 border-b border-[#1a1a30]">
           <div className="flex items-center gap-1">
@@ -175,7 +174,6 @@ function ExerciseCard({ exercise, exIndex, isEditing, exerciseCount, onMoveUp, o
         </div>
       )}
 
-      {/* Header row */}
       <div className="gap-1.5 mt-4 mb-2" style={{ display: 'grid', ...gridStyle }}>
         <span className="text-[10px] font-bold text-[#444] uppercase text-center">Set</span>
         {hasPrevious && <span className="text-[10px] font-bold text-[#444] uppercase text-center">Prev</span>}
