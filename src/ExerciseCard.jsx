@@ -27,6 +27,18 @@ function ExerciseCard({ exercise, exIndex, isEditing, exerciseCount, onMoveUp, o
     }
   }
 
+  function isPrevDifferent(set, prevSet) {
+    if (!prevSet) return false
+    switch (type) {
+      case 'weight_reps': return String(set.kg) !== String(prevSet.kg) || String(set.reps) !== String(prevSet.reps)
+      case 'bw_reps': return String(set.kg) !== String(prevSet.kg) || String(set.reps) !== String(prevSet.reps)
+      case 'reps_only': return String(set.reps) !== String(prevSet.reps)
+      case 'time_only': return String(set.time) !== String(prevSet.time)
+      case 'distance_time': return String(set.distance) !== String(prevSet.distance) || String(set.time) !== String(prevSet.time)
+      default: return false
+    }
+  }
+
   function handleTouchStart(e, si) { touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; touchDeltaRef.current = 0; isSwipingRef.current = false }
   function handleTouchMove(e, si) {
     const dx = touchStartRef.current.x - e.touches[0].clientX
@@ -185,6 +197,7 @@ function ExerciseCard({ exercise, exIndex, isEditing, exerciseCount, onMoveUp, o
         const isActiveRest = activeRest && activeRest.exIndex === exIndex && activeRest.setIndex === j
         const hasCompletedRest = set.done && set.restTime && !isActiveRest
         const prevSet = previousSets && previousSets[j]
+        const prevChanged = prevSet && isPrevDifferent(set, prevSet)
 
         return (
           <div key={j}>
@@ -196,7 +209,11 @@ function ExerciseCard({ exercise, exIndex, isEditing, exerciseCount, onMoveUp, o
               <div ref={(el) => { rowRefs.current[j] = el }} className="gap-1.5 items-center bg-[#13132A] relative z-10" style={{ display: 'grid', ...gridStyle }}
                 onTouchStart={(e) => { tapOutside(j); handleTouchStart(e, j) }} onTouchMove={(e) => handleTouchMove(e, j)} onTouchEnd={(e) => handleTouchEnd(e, j)}>
                 <span className="text-sm font-bold text-[#666] text-center">{j + 1}</span>
-                {hasPrevious && <span className="text-[10px] text-[#4a4a6a] text-center font-medium italic">{formatPrev(prevSet)}</span>}
+                {hasPrevious && (
+                  <span className={`text-[10px] text-center font-medium italic ${prevChanged ? 'text-[#7B7BFF] font-bold not-italic' : 'text-[#4a4a6a]'}`}>
+                    {formatPrev(prevSet)}
+                  </span>
+                )}
                 {renderInputs(set, j)}
                 {set.done ? (
                   <div className="w-8 h-8 bg-[#5BF5A0] rounded-lg flex items-center justify-center mx-auto"><svg viewBox="0 0 24 24" fill="none" strokeWidth="3" strokeLinecap="round" className="w-4 h-4 stroke-[#0D0D1A]"><polyline points="20 6 9 17 4 12" /></svg></div>

@@ -36,15 +36,13 @@ function relativeTime(dateStr) {
   const parts = dateStr.split('/')
   if (parts.length !== 3) return dateStr
   const d = new Date(parts[2], parts[1] - 1, parts[0])
-  const now = new Date()
-  now.setHours(0, 0, 0, 0)
-  d.setHours(0, 0, 0, 0)
-  const diff = Math.floor((now - d) / (1000 * 60 * 60 * 24))
+  const now = new Date(); now.setHours(0,0,0,0); d.setHours(0,0,0,0)
+  const diff = Math.floor((now - d) / (1000*60*60*24))
   if (diff === 0) return 'Today'
   if (diff === 1) return 'Yesterday'
   if (diff < 7) return `${diff} days ago`
   if (diff < 14) return '1 week ago'
-  if (diff < 30) return `${Math.floor(diff / 7)} weeks ago`
+  if (diff < 30) return `${Math.floor(diff/7)} weeks ago`
   return dateStr
 }
 
@@ -53,6 +51,8 @@ function App() {
   const [page, setPage] = useState('workout')
   const [workoutActive, setWorkoutActive] = useState(false)
   const [workoutName, setWorkoutName] = useState('')
+  const [workoutStartTime, setWorkoutStartTime] = useState(null)
+  const [workoutElapsed, setWorkoutElapsed] = useState(0)
   const [exercises, setExercises] = useState(() => { const s = localStorage.getItem('exercises'); return s ? JSON.parse(s) : [] })
   const [history, setHistory] = useState(() => { const s = localStorage.getItem('history'); return s ? JSON.parse(s) : [] })
   const [folders, setFolders] = useState(() => {
@@ -74,10 +74,11 @@ function App() {
   const [editingFolderName, setEditingFolderName] = useState('')
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [deletingFolder, setDeletingFolder] = useState(null)
+  const [deletingTemplate, setDeletingTemplate] = useState(null) // { fi, ti }
   const [editingTemplate, setEditingTemplate] = useState(null)
   const [showEmptyNameModal, setShowEmptyNameModal] = useState(false)
   const [emptyWorkoutName, setEmptyWorkoutName] = useState('')
-  const [pendingStart, setPendingStart] = useState(null) // { type, data } for active workout warning
+  const [pendingStart, setPendingStart] = useState(null)
   const restStartRef = useRef(null)
 
   useEffect(() => { const t = setTimeout(() => setShowSplash(false), 1500); return () => clearTimeout(t) }, [])
@@ -87,19 +88,31 @@ function App() {
   useEffect(() => { localStorage.setItem('defaultRest', String(defaultRest)) }, [defaultRest])
   useEffect(() => { localStorage.setItem('bodyweight', String(bodyweight)) }, [bodyweight])
 
-  // Restore active workout on load
+  // Restore active workout
   useEffect(() => {
     if (exercises.length > 0) {
       const savedName = localStorage.getItem('workoutName')
+      const savedStart = localStorage.getItem('workoutStartTime')
       setWorkoutActive(true)
       setWorkoutName(savedName || '')
+      if (savedStart) setWorkoutStartTime(Number(savedStart))
+      else { const now = Date.now(); setWorkoutStartTime(now); localStorage.setItem('workoutStartTime', String(now)) }
     }
   }, [])
 
-  useEffect(() => {
-    localStorage.setItem('workoutName', workoutName)
-  }, [workoutName])
+  useEffect(() => { localStorage.setItem('workoutName', workoutName) }, [workoutName])
+  useEffect(() => { if (workoutStartTime) localStorage.setItem('workoutStartTime', String(workoutStartTime)) }, [workoutStartTime])
 
+  // Workout timer
+  useEffect(() => {
+    if (!workoutActive || !workoutStartTime) return
+    const tick = () => setWorkoutElapsed(Math.floor((Date.now() - workoutStartTime) / 1000))
+    tick()
+    const interval = setInterval(tick, 1000)
+    return () => clearInterval(interval)
+  }, [workoutActive, workoutStartTime])
+
+  // Rest timer
   useEffect(() => {
     if (!activeRest) return
     if (restTime <= 0) { completeRest(); return }
@@ -118,84 +131,50 @@ function App() {
 
   function skipRest() { completeRest() }
 
-  // --- Start workout methods ---
   function tryStart(type, data) {
-    if (workoutActive && exercises.length > 0) {
-      setPendingStart({ type, data })
-      return
-    }
+    if (workoutActive && exercises.length > 0) { setPendingStart({ type, data }); return }
     executeStart(type, data)
   }
 
   function executeStart(type, data) {
+    const now = Date.now()
     if (type === 'template') {
       setWorkoutName(data.name)
-      setExercises(data.exercises.map(ex => ({
-        name: ex.name, type: ex.type || 'weight_reps',
-        sets: ex.sets.map(s => ({ ...s, done: false })),
-        restOverride: ex.restOverride !== undefined ? ex.restOverride : null, note: ex.note || ''
-      })))
+      setExercises(data.exercises.map(ex => ({ name: ex.name, type: ex.type || 'weight_reps', sets: ex.sets.map(s => ({ ...s, done: false })), restOverride: ex.restOverride !== undefined ? ex.restOverride : null, note: ex.note || '' })))
     } else if (type === 'last') {
       setWorkoutName(data.name || data.date)
-      setExercises(data.exercises.map(ex => ({
-        name: ex.name, type: ex.type || 'weight_reps',
-        sets: ex.sets.map(s => ({ ...s, done: false })),
-        restOverride: ex.restOverride !== undefined ? ex.restOverride : null, note: ex.note || ''
-      })))
+      setExercises(data.exercises.map(ex => ({ name: ex.name, type: ex.type || 'weight_reps', sets: ex.sets.map(s => ({ ...s, done: false })), restOverride: ex.restOverride !== undefined ? ex.restOverride : null, note: ex.note || '' })))
     } else if (type === 'empty') {
       setWorkoutName(data.name)
       setExercises([])
     }
-    setWorkoutActive(true)
-    setActiveRest(null)
-    setRestTime(0)
-    setPendingStart(null)
+    setWorkoutActive(true); setWorkoutStartTime(now); setWorkoutElapsed(0)
+    setActiveRest(null); setRestTime(0); setPendingStart(null)
   }
 
-  function confirmDiscardAndStart() {
-    if (!pendingStart) return
-    setExercises([])
-    setActiveRest(null)
-    setRestTime(0)
-    executeStart(pendingStart.type, pendingStart.data)
-  }
+  function confirmDiscardAndStart() { if (!pendingStart) return; setExercises([]); setActiveRest(null); setRestTime(0); executeStart(pendingStart.type, pendingStart.data) }
 
-  function startEmpty() {
-    setEmptyWorkoutName('')
-    setShowEmptyNameModal(true)
-  }
+  function startEmpty() { setEmptyWorkoutName(''); setShowEmptyNameModal(true) }
+  function confirmEmptyStart() { if (!emptyWorkoutName) return; setShowEmptyNameModal(false); tryStart('empty', { name: emptyWorkoutName }) }
 
-  function confirmEmptyStart() {
-    if (!emptyWorkoutName) return
-    setShowEmptyNameModal(false)
-    tryStart('empty', { name: emptyWorkoutName })
-  }
-
-  // --- Suggested next logic ---
   function getSuggestedNext() {
     if (history.length === 0) return null
-    const lastWorkout = history[0]
-    const lastTemplateName = lastWorkout.templateName
-    if (!lastTemplateName) return null
-
-    // Find the template and its folder
+    const last = history[0]; const ltn = last.templateName
+    if (!ltn) return null
     for (let fi = 0; fi < folders.length; fi++) {
       const folder = folders[fi]
       for (let ti = 0; ti < folder.templates.length; ti++) {
-        if (folder.templates[ti].name === lastTemplateName) {
-          // Next in same folder
-          const nextIndex = (ti + 1) % folder.templates.length
-          return { template: folder.templates[nextIndex], folderName: folder.name }
+        if (folder.templates[ti].name === ltn) {
+          const next = (ti + 1) % folder.templates.length
+          return { template: folder.templates[next], folderName: folder.name }
         }
       }
     }
     return null
   }
 
-  // --- Exercise management ---
   function addExercise() { if (name === '') return; setShowTypePicker(true) }
   function confirmAddExercise(type) { setExercises([...exercises, { name, type, sets: [], restOverride: null, note: '' }]); setName(''); setShowTypePicker(false) }
-
   function updateExerciseRest(exIndex, value) { const n = [...exercises]; n[exIndex].restOverride = value === '' ? null : Number(value); setExercises(n) }
   function updateExerciseNote(exIndex, value) { const n = [...exercises]; n[exIndex].note = value; setExercises(n) }
 
@@ -267,9 +246,9 @@ function App() {
     setActiveRest({ exIndex, setIndex }); setRestTime(dur); setRestDuration(dur)
   }
 
-  function moveExerciseUp(index) { if (index === 0) return; const n = [...exercises]; [n[index-1], n[index]] = [n[index], n[index-1]]; setExercises(n) }
-  function moveExerciseDown(index) { if (index >= exercises.length-1) return; const n = [...exercises]; [n[index+1], n[index]] = [n[index], n[index+1]]; setExercises(n) }
-  function removeExercise(index) { const n = [...exercises]; n.splice(index, 1); setExercises(n) }
+  function moveExerciseUp(i) { if (i === 0) return; const n = [...exercises]; [n[i-1], n[i]] = [n[i], n[i-1]]; setExercises(n) }
+  function moveExerciseDown(i) { if (i >= exercises.length-1) return; const n = [...exercises]; [n[i+1], n[i]] = [n[i], n[i+1]]; setExercises(n) }
+  function removeExercise(i) { const n = [...exercises]; n.splice(i, 1); setExercises(n) }
 
   function getPreviousSets(exerciseName) {
     for (const w of history) for (const ex of w.exercises) if (ex.name === exerciseName) return ex.sets
@@ -279,36 +258,34 @@ function App() {
   function finishWorkout() { if (exercises.length === 0) return; setShowFinishModal(true) }
 
   function confirmFinish(updateAll) {
-    // Find if current workout matches a template name
     let templateName = null
-    for (const f of folders) for (const t of f.templates) {
-      if (t.name === workoutName) { templateName = workoutName; break }
-    }
+    for (const f of folders) for (const t of f.templates) if (t.name === workoutName) { templateName = workoutName; break }
 
-    const workout = {
-      date: new Date().toLocaleDateString('en-GB'),
-      name: workoutName,
-      templateName: templateName,
-      exercises
-    }
+    const duration = Math.floor((Date.now() - workoutStartTime) / 1000)
+    const workout = { date: new Date().toLocaleDateString('en-GB'), name: workoutName, templateName, duration, exercises }
     setHistory([workout, ...history])
 
     if (updateAll) {
       const nf = [...folders]
       for (const ex of exercises) for (const f of nf) for (const t of f.templates) {
         for (let i = 0; i < t.exercises.length; i++) {
-          if (t.exercises[i].name === ex.name) t.exercises[i].sets = ex.sets.map(s => { const c = { ...s }; delete c.done; delete c.restTime; return c })
+          if (t.exercises[i].name === ex.name) {
+            t.exercises[i].sets = ex.sets.map(s => { const c = { ...s }; delete c.done; delete c.restTime; return c })
+            t.exercises[i].note = ex.note || ''
+          }
         }
       }
       setFolders(nf)
     }
     setExercises([]); setActiveRest(null); setRestTime(0); setShowFinishModal(false)
-    setWorkoutActive(false); setWorkoutName('')
+    setWorkoutActive(false); setWorkoutName(''); setWorkoutStartTime(null); setWorkoutElapsed(0)
+    localStorage.removeItem('workoutStartTime')
   }
 
   function cancelWorkout() {
     setExercises([]); setActiveRest(null); setRestTime(0)
-    setWorkoutActive(false); setWorkoutName('')
+    setWorkoutActive(false); setWorkoutName(''); setWorkoutStartTime(null); setWorkoutElapsed(0)
+    localStorage.removeItem('workoutStartTime')
   }
 
   function saveTemplate() { if (exercises.length === 0) return; setShowSaveModal(true) }
@@ -325,16 +302,11 @@ function App() {
     const nf = [...folders]; nf[folderIndex].templates.push(template); setFolders(nf); setShowSaveModal(false)
   }
 
-  function editTemplate(folderIndex, templateIndex) {
-    const template = folders[folderIndex].templates[templateIndex]
-    setExercises(template.exercises.map(ex => ({
-      name: ex.name, type: ex.type || 'weight_reps',
-      sets: ex.sets.map(s => ({ ...s, done: false })),
-      restOverride: ex.restOverride !== undefined ? ex.restOverride : null, note: ex.note || ''
-    })))
-    setEditingTemplate({ folderIndex, templateIndex })
-    setWorkoutActive(true)
-    setWorkoutName(template.name)
+  function editTemplate(fi, ti) {
+    const t = folders[fi].templates[ti]
+    setExercises(t.exercises.map(ex => ({ name: ex.name, type: ex.type || 'weight_reps', sets: ex.sets.map(s => ({ ...s, done: false })), restOverride: ex.restOverride !== undefined ? ex.restOverride : null, note: ex.note || '' })))
+    setEditingTemplate({ folderIndex: fi, templateIndex: ti })
+    setWorkoutActive(true); setWorkoutName(t.name)
   }
 
   function saveEditedTemplate() {
@@ -354,8 +326,11 @@ function App() {
 
   function cancelEditTemplate() { setExercises([]); setEditingTemplate(null); setWorkoutActive(false); setWorkoutName('') }
 
-  function deleteTemplate(fi, ti) { const nf = [...folders]; nf[fi].templates.splice(ti, 1); setFolders(nf) }
-  function deleteTemplateNote(fi, ti, ei) { const nf = [...folders]; nf[fi].templates[ti].exercises[ei].note = ''; setFolders(nf) }
+  function requestDeleteTemplate(fi, ti) { setDeletingTemplate({ fi, ti }) }
+  function confirmDeleteTemplate() {
+    if (!deletingTemplate) return
+    const nf = [...folders]; nf[deletingTemplate.fi].templates.splice(deletingTemplate.ti, 1); setFolders(nf); setDeletingTemplate(null)
+  }
 
   function addFolder() { const nf = [...folders, { name: 'New Folder', open: true, templates: [] }]; setFolders(nf); setEditingFolder(nf.length - 1); setEditingFolderName('New Folder') }
   function toggleFolder(i) { const nf = [...folders]; nf[i].open = !nf[i].open; setFolders(nf) }
@@ -378,6 +353,7 @@ function App() {
   }
 
   function formatTime(sec) { return `${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}` }
+  function formatDuration(sec) { const m = Math.floor(sec/60); if (m < 60) return `${m} min`; const h = Math.floor(m/60); return `${h}h ${m%60}m` }
 
   const lastWorkout = history.length > 0 ? history[0] : null
   const suggestedNext = getSuggestedNext()
@@ -416,6 +392,10 @@ function App() {
                         <span className="text-sm font-bold">{w.name || w.date}</span>
                         <span className="text-xs text-[#555]">{relativeTime(w.date)}</span>
                       </div>
+                      <div className="flex items-center gap-3 mb-2 text-[10px] text-[#555]">
+                        {w.duration && <span>{formatDuration(w.duration)}</span>}
+                        <span>{w.exercises.reduce((s, ex) => s + ex.sets.length, 0)} sets</span>
+                      </div>
                       {w.exercises.map((ex, j) => <div key={j} className="text-xs text-[#666] ml-1">{ex.name} — {ex.sets.length} sets</div>)}
                     </div>
                   ))}
@@ -429,77 +409,66 @@ function App() {
             </div>
           )}
 
-          {/* WORKOUT */}
+          {/* WORKOUT — START SCREEN */}
           {page === 'workout' && !workoutActive && (
             <div>
               <h1 className="text-2xl font-bold tracking-tight mb-1">HUTRAZ</h1>
               <p className="text-xs text-[#7B7BFF] mb-6">Simple tracking. Real progress.</p>
 
-              {/* LAST WORKOUT */}
+              {/* LAST */}
               <div className="text-[10px] font-bold text-[#555] uppercase tracking-wider mb-2">
                 Last workout {lastWorkout ? `· ${relativeTime(lastWorkout.date)}` : ''}
               </div>
               <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-4 mb-4">
-                {lastWorkout ? (
-                  <>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-[15px] font-bold">{lastWorkout.name || lastWorkout.date}</span>
-                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide bg-[#7B7BFF]/10 text-[#7B7BFF]">Last</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {lastWorkout.exercises.map((ex, i) => (
-                        <span key={i} className="bg-[#1C1C38] rounded-md px-2 py-0.5 text-[10px] text-[#888]">{ex.name}</span>
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-3 mb-3 text-[10px] text-[#555]">
-                      <span>{lastWorkout.exercises.reduce((s, ex) => s + ex.sets.length, 0)} sets</span>
-                      <span>{lastWorkout.exercises.length} exercises</span>
-                    </div>
-                    <button onClick={() => tryStart('last', lastWorkout)} className="flex items-center justify-center gap-2 w-full py-2.5 bg-[#7B7BFF] rounded-xl text-xs font-bold hover:bg-[#6060DD] transition-colors">
-                      <PlayIcon className="w-3 h-3" /> Start
-                    </button>
-                  </>
-                ) : (
-                  <div className="text-xs text-[#444] italic py-2">{disabledText}</div>
-                )}
+                {lastWorkout ? (<>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[15px] font-bold">{lastWorkout.name || lastWorkout.date}</span>
+                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide bg-[#7B7BFF]/10 text-[#7B7BFF]">Last</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {lastWorkout.exercises.map((ex, i) => <span key={i} className="bg-[#1C1C38] rounded-md px-2 py-0.5 text-[10px] text-[#888]">{ex.name}</span>)}
+                  </div>
+                  <div className="flex items-center gap-3 mb-3 text-[10px] text-[#555]">
+                    {lastWorkout.duration && <span>{formatDuration(lastWorkout.duration)}</span>}
+                    <span>{lastWorkout.exercises.reduce((s, ex) => s + ex.sets.length, 0)} sets</span>
+                    <span>{lastWorkout.exercises.length} exercises</span>
+                  </div>
+                  <button onClick={() => tryStart('last', lastWorkout)} className="flex items-center justify-center gap-2 w-full py-2 mt-2 border-[1.5px] border-[#7B7BFF] rounded-xl text-xs font-bold text-[#7B7BFF] hover:bg-[#7B7BFF]/8 transition-colors">
+                    <PlayIcon className="w-3 h-3" /> Start
+                  </button>
+                </>) : <div className="text-xs text-[#444] italic py-2">{disabledText}</div>}
               </div>
 
-              {/* SUGGESTED NEXT */}
+              {/* SUGGESTED */}
               <div className="text-[10px] font-bold text-[#555] uppercase tracking-wider mb-2">Suggested next</div>
               <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-4 mb-4">
-                {suggestedNext ? (
-                  <>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-[15px] font-bold">{suggestedNext.template.name}</span>
-                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide bg-[#5BF5A0]/10 text-[#5BF5A0]">Up next</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {suggestedNext.template.exercises.map((ex, i) => (
-                        <span key={i} className="bg-[#1C1C38] rounded-md px-2 py-0.5 text-[10px] text-[#888]">{ex.name}</span>
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-3 mb-3 text-[10px] text-[#555]">
-                      <span>{suggestedNext.template.exercises.reduce((s, ex) => s + ex.sets.length, 0)} sets</span>
-                      <span>{suggestedNext.folderName}</span>
-                    </div>
-                    <button onClick={() => tryStart('template', suggestedNext.template)} className="flex items-center justify-center gap-2 w-full py-2.5 bg-[#7B7BFF] rounded-xl text-xs font-bold hover:bg-[#6060DD] transition-colors">
-                      <PlayIcon className="w-3 h-3" /> Start
-                    </button>
-                  </>
-                ) : (
-                  <div className="text-xs text-[#444] italic py-2">{isNew ? disabledText : 'Use templates to get suggestions'}</div>
-                )}
+                {suggestedNext ? (<>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[15px] font-bold">{suggestedNext.template.name}</span>
+                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide bg-[#5BF5A0]/10 text-[#5BF5A0]">Up next</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {suggestedNext.template.exercises.map((ex, i) => <span key={i} className="bg-[#1C1C38] rounded-md px-2 py-0.5 text-[10px] text-[#888]">{ex.name}</span>)}
+                  </div>
+                  <div className="flex items-center gap-3 mb-3 text-[10px] text-[#555]">
+                    <span>{suggestedNext.template.exercises.reduce((s, ex) => s + ex.sets.length, 0)} sets</span>
+                    <span>{suggestedNext.folderName}</span>
+                  </div>
+                  <button onClick={() => tryStart('template', suggestedNext.template)} className="flex items-center justify-center gap-2 w-full py-2 mt-2 border-[1.5px] border-[#7B7BFF] rounded-xl text-xs font-bold text-[#7B7BFF] hover:bg-[#7B7BFF]/8 transition-colors">
+                    <PlayIcon className="w-3 h-3" /> Start
+                  </button>
+                </>) : <div className="text-xs text-[#444] italic py-2">{isNew ? disabledText : 'Use templates to get suggestions'}</div>}
               </div>
 
-              {/* EMPTY WORKOUT */}
-              <div className="text-[10px] font-bold text-[#555] uppercase tracking-wider mb-2">Or</div>
+              {/* EMPTY */}
+              <div className="text-[10px] font-bold text-[#555] uppercase tracking-wider mb-2">Start fresh</div>
               <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-4 mb-4">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-[15px] font-bold">Empty workout</span>
                   <span className="text-[9px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide bg-white/5 text-[#888]">New</span>
                 </div>
                 <div className="text-[11px] text-[#666] mb-3">Start fresh and add exercises as you go</div>
-                <button onClick={startEmpty} className="flex items-center justify-center gap-2 w-full py-2.5 bg-[#7B7BFF] rounded-xl text-xs font-bold hover:bg-[#6060DD] transition-colors">
+                <button onClick={startEmpty} className="flex items-center justify-center gap-2 w-full py-2 border-[1.5px] border-[#7B7BFF] rounded-xl text-xs font-bold text-[#7B7BFF] hover:bg-[#7B7BFF]/8 transition-colors">
                   <PlayIcon className="w-3 h-3" /> Start
                 </button>
               </div>
@@ -510,9 +479,7 @@ function App() {
                   <h3 className="text-sm font-semibold text-[#7B7BFF] uppercase tracking-wide">Templates</h3>
                   <button onClick={addFolder} className="text-[10px] font-semibold text-[#555] border border-[#2A2A4A] px-3 py-1.5 rounded-lg hover:border-[#7B7BFF] hover:text-[#7B7BFF] transition-colors">+ Folder</button>
                 </div>
-                <div className="text-[10px] text-[#444] mb-4">
-                  Tap folder to open/close · Use <span className="inline-flex flex-col align-middle mx-0.5"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-2.5 h-2.5 stroke-[#555]"><polyline points="18 15 12 9 6 15"/></svg><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-2.5 h-2.5 stroke-[#555]"><polyline points="6 9 12 15 18 9"/></svg></span> to reorder
-                </div>
+                <div className="text-[10px] text-[#444] mb-4">Tap folder to open/close · Use <span className="inline-flex flex-col align-middle mx-0.5"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-2.5 h-2.5 stroke-[#555]"><polyline points="18 15 12 9 6 15"/></svg><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-2.5 h-2.5 stroke-[#555]"><polyline points="6 9 12 15 18 9"/></svg></span> to reorder</div>
 
                 {folders.map((folder, fi) => (
                   <div key={fi} className="mb-3">
@@ -523,9 +490,7 @@ function App() {
                       </div>
                       <button onClick={() => toggleFolder(fi)} className="flex items-center gap-2 flex-1 min-w-0">
                         <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={`w-4 h-4 shrink-0 transition-colors ${folder.open ? 'stroke-[#7B7BFF] fill-[#7B7BFF]/10' : 'stroke-[#555]'}`}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                        {editingFolder === fi ? (
-                          <input type="text" value={editingFolderName} onChange={(e) => setEditingFolderName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && confirmEditFolder()} onBlur={confirmEditFolder} autoFocus onClick={(e) => e.stopPropagation()} className="bg-[#1C1C38] border border-[#7B7BFF] rounded-lg px-2 py-1 text-sm font-semibold text-white outline-none flex-1 min-w-0" />
-                        ) : <span className="text-sm font-semibold truncate">{folder.name}</span>}
+                        {editingFolder === fi ? <input type="text" value={editingFolderName} onChange={(e) => setEditingFolderName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && confirmEditFolder()} onBlur={confirmEditFolder} autoFocus onClick={(e) => e.stopPropagation()} className="bg-[#1C1C38] border border-[#7B7BFF] rounded-lg px-2 py-1 text-sm font-semibold text-white outline-none flex-1 min-w-0" /> : <span className="text-sm font-semibold truncate">{folder.name}</span>}
                         <span className="text-[10px] text-[#555] shrink-0">{folder.templates.length}</span>
                         <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className={`w-3.5 h-3.5 stroke-[#444] shrink-0 transition-transform ${folder.open ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
                       </button>
@@ -548,22 +513,14 @@ function App() {
                                 <button onClick={() => moveTemplateDown(fi, ti)} className={`text-[#444] p-0.5 ${ti >= folder.templates.length-1 ? 'opacity-20' : 'hover:text-[#7B7BFF]'}`} disabled={ti >= folder.templates.length-1}><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-2.5 h-2.5 stroke-current"><polyline points="6 9 12 15 18 9"/></svg></button>
                               </div>
                               <div className="flex-1 min-w-0">
-                                <div className="flex justify-between items-center mb-1.5">
-                                  <span className="font-bold text-sm truncate">{t.name}</span>
-                                  <span className="text-[10px] text-[#555] shrink-0 ml-2">{t.exercises.length} ex</span>
-                                </div>
-                                {t.exercises.map((ex, j) => (
-                                  <div key={j} className="flex items-center gap-1.5 ml-0.5 mb-0.5">
-                                    <TypeIcon type={ex.type || 'weight_reps'} size="w-3 h-3" />
-                                    <span className="text-[10px] text-[#666]">{ex.name} — {ex.sets.length} sets</span>
-                                  </div>
-                                ))}
+                                <div className="flex justify-between items-center mb-1.5"><span className="font-bold text-sm truncate">{t.name}</span><span className="text-[10px] text-[#555] shrink-0 ml-2">{t.exercises.length} ex</span></div>
+                                {t.exercises.map((ex, j) => <div key={j} className="flex items-center gap-1.5 ml-0.5 mb-0.5"><TypeIcon type={ex.type || 'weight_reps'} size="w-3 h-3" /><span className="text-[10px] text-[#666]">{ex.name} — {ex.sets.length} sets</span></div>)}
                               </div>
                             </div>
                             <div className="flex gap-2 mt-2.5">
-                              <button onClick={() => tryStart('template', t)} className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-[#7B7BFF] rounded-lg text-xs font-bold hover:bg-[#6060DD] transition-colors"><PlayIcon className="w-2.5 h-2.5" />Start</button>
+                              <button onClick={() => tryStart('template', t)} className="flex-1 flex items-center justify-center gap-1.5 py-2 border-[1.5px] border-[#7B7BFF] rounded-lg text-xs font-bold text-[#7B7BFF] hover:bg-[#7B7BFF]/8 transition-colors"><PlayIcon className="w-2.5 h-2.5" />Start</button>
                               <button onClick={() => editTemplate(fi, ti)} className="py-2 px-3 border border-[#2A2A4A] rounded-lg text-[10px] font-semibold text-[#888] hover:border-[#7B7BFF] hover:text-[#7B7BFF] transition-colors">Edit</button>
-                              <button onClick={() => deleteTemplate(fi, ti)} className="py-2 px-3 border border-[#2A2A4A] rounded-lg text-[10px] font-semibold text-[#555] hover:border-red-500/50 hover:text-red-400 transition-colors">Delete</button>
+                              <button onClick={() => requestDeleteTemplate(fi, ti)} className="py-2 px-3 border border-[#2A2A4A] rounded-lg text-[10px] font-semibold text-[#555] hover:border-red-500/50 hover:text-red-400 transition-colors">Delete</button>
                             </div>
                           </div>
                         ))}
@@ -580,7 +537,13 @@ function App() {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <h1 className="text-2xl font-bold tracking-tight">{workoutName || 'Workout'}</h1>
-                <button onClick={cancelWorkout} className="text-[10px] font-semibold text-[#555] border border-[#2A2A4A] px-3 py-1.5 rounded-lg hover:border-red-500/50 hover:text-red-400 transition-colors">Cancel</button>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5 text-[#5BF5A0] text-sm font-bold tabular-nums">
+                    <div className="w-2 h-2 bg-[#5BF5A0] rounded-full animate-pulse" />
+                    {formatTime(workoutElapsed)}
+                  </div>
+                  <button onClick={cancelWorkout} className="text-[10px] font-semibold text-[#555] border border-[#2A2A4A] px-3 py-1.5 rounded-lg hover:border-red-500/50 hover:text-red-400 transition-colors">Cancel</button>
+                </div>
               </div>
               <p className="text-xs text-[#7B7BFF] mb-6">Simple tracking. Real progress.</p>
 
@@ -597,12 +560,6 @@ function App() {
                 </div>
               )}
 
-              <div className="flex gap-2 mb-6">
-                <input type="text" placeholder="Exercise name" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addExercise()}
-                  className="flex-1 bg-[#1C1C38] border border-[#2A2A4A] rounded-xl px-4 py-3 text-white placeholder-[#3a3a55] outline-none focus:border-[#7B7BFF] transition-colors" />
-                <button onClick={addExercise} className="bg-[#7B7BFF] rounded-xl px-5 py-3 font-bold text-sm hover:bg-[#6060DD] transition-colors">Add</button>
-              </div>
-
               {exercises.map((ex, i) => (
                 <ExerciseCard key={i} exercise={ex} exIndex={i}
                   isEditing={!!editingTemplate} exerciseCount={exercises.length}
@@ -613,6 +570,12 @@ function App() {
                   activeRest={activeRest} restTime={restTime} restDuration={restDuration} defaultRest={defaultRest} onSkipRest={skipRest}
                   bodyweight={bodyweight} TypeIcon={TypeIcon} />
               ))}
+
+              <div className="flex gap-2 mb-6">
+                <input type="text" placeholder="Exercise name" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addExercise()}
+                  className="flex-1 bg-[#1C1C38] border border-dashed border-[#5BF5A0]/30 rounded-xl px-4 py-3 text-white placeholder-[#3a3a55] outline-none focus:border-[#5BF5A0] transition-colors" />
+                <button onClick={addExercise} className="border border-dashed border-[#5BF5A0]/30 text-[#5BF5A0] rounded-xl px-5 py-3 font-bold text-sm hover:bg-[#5BF5A0]/8 hover:border-[#5BF5A0] transition-colors">+ Add</button>
+              </div>
 
               {exercises.length > 0 && !editingTemplate && (
                 <div className="flex flex-col gap-3 mt-4 mb-8">
@@ -663,8 +626,7 @@ function App() {
               <div className="flex flex-col gap-2">
                 {EXERCISE_TYPES.map(t => (
                   <button key={t.id} onClick={() => confirmAddExercise(t.id)} className="flex items-center gap-3 px-4 py-3.5 bg-[#1C1C38] border border-[#2A2A4A] rounded-xl text-left hover:border-[#7B7BFF] transition-colors">
-                    <TypeIcon type={t.id} size="w-5 h-5" />
-                    <div><div className="text-sm font-semibold">{t.label}</div><div className="text-[10px] text-[#555]">{t.desc}</div></div>
+                    <TypeIcon type={t.id} size="w-5 h-5" /><div><div className="text-sm font-semibold">{t.label}</div><div className="text-[10px] text-[#555]">{t.desc}</div></div>
                   </button>
                 ))}
               </div>
@@ -673,13 +635,12 @@ function App() {
           </div>
         )}
 
-        {/* EMPTY WORKOUT NAME MODAL */}
+        {/* EMPTY NAME MODAL */}
         {showEmptyNameModal && (
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end justify-center z-50">
             <div className="w-full max-w-md bg-[#13132A] rounded-t-3xl p-6 pb-10">
               <h2 className="text-lg font-bold text-center mb-5">Name your workout</h2>
-              <input type="text" placeholder="e.g. Push Day, Upper Body..." value={emptyWorkoutName} onChange={(e) => setEmptyWorkoutName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && confirmEmptyStart()} autoFocus
-                className="w-full bg-[#1C1C38] border border-[#2A2A4A] rounded-xl px-4 py-3 text-white placeholder-[#3a3a55] outline-none focus:border-[#7B7BFF] transition-colors mb-4" />
+              <input type="text" placeholder="e.g. Push Day, Upper Body..." value={emptyWorkoutName} onChange={(e) => setEmptyWorkoutName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && confirmEmptyStart()} autoFocus className="w-full bg-[#1C1C38] border border-[#2A2A4A] rounded-xl px-4 py-3 text-white placeholder-[#3a3a55] outline-none focus:border-[#7B7BFF] transition-colors mb-4" />
               <button onClick={confirmEmptyStart} className={`w-full py-4 rounded-2xl font-bold text-sm mb-3 transition-all ${emptyWorkoutName ? 'bg-gradient-to-r from-[#7B7BFF] to-[#6060DD] shadow-lg shadow-[#7B7BFF]/25' : 'bg-[#1C1C38] text-[#555]'}`} disabled={!emptyWorkoutName}>Start workout</button>
               <button onClick={() => setShowEmptyNameModal(false)} className="w-full py-3 text-sm font-semibold text-[#555]">Cancel</button>
             </div>
@@ -722,6 +683,19 @@ function App() {
               <p className="text-xs text-[#555] text-center mb-5">Templates will be moved to "{folders.find((_, i) => i !== deletingFolder)?.name}".</p>
               <button onClick={confirmDeleteFolder} className="w-full py-3 bg-red-500 rounded-xl font-bold text-sm mb-2">Delete folder</button>
               <button onClick={() => setDeletingFolder(null)} className="w-full py-3 text-sm font-semibold text-[#555]">Cancel</button>
+            </div>
+          </div>
+        )}
+
+        {/* DELETE TEMPLATE CONFIRM */}
+        {deletingTemplate && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-6">
+            <div className="w-full max-w-sm bg-[#13132A] border border-[#232340] rounded-2xl p-6">
+              <div className="flex justify-center mb-4"><div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="w-6 h-6 stroke-red-400"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div></div>
+              <h2 className="text-base font-bold text-center mb-2">Delete template?</h2>
+              <p className="text-xs text-[#888] text-center mb-5">"{folders[deletingTemplate.fi]?.templates[deletingTemplate.ti]?.name}" will be permanently deleted.</p>
+              <button onClick={confirmDeleteTemplate} className="w-full py-3 bg-red-500 rounded-xl font-bold text-sm mb-2">Delete template</button>
+              <button onClick={() => setDeletingTemplate(null)} className="w-full py-3 text-sm font-semibold text-[#555]">Cancel</button>
             </div>
           </div>
         )}
