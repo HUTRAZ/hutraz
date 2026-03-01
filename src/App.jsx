@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import ExerciseCard from './ExerciseCard'
 
 const REST_PRESETS = [0, 30, 60, 90, 120, 180]
+const WEEK_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 const EXERCISE_TYPES = [
   { id: 'weight_reps', label: 'Weight + Reps', desc: 'Bench, squat, rows...' },
@@ -46,6 +47,13 @@ function relativeTime(dateStr) {
   return dateStr
 }
 
+function parseTimeToSeconds(t) {
+  if (!t) return 0
+  const str = String(t)
+  if (str.includes(':')) { const [m, s] = str.split(':'); return (parseInt(m)||0)*60 + (parseInt(s)||0) }
+  return parseInt(str) || 0
+}
+
 function App() {
   const [showSplash, setShowSplash] = useState(true)
   const [page, setPage] = useState('workout')
@@ -64,21 +72,25 @@ function App() {
   })
   const [defaultRest, setDefaultRest] = useState(() => { const s = localStorage.getItem('defaultRest'); return s ? Number(s) : 90 })
   const [bodyweight, setBodyweight] = useState(() => { const s = localStorage.getItem('bodyweight'); return s ? Number(s) : 80 })
+  const [weekStart, setWeekStart] = useState(() => { const s = localStorage.getItem('weekStart'); return s ? Number(s) : 0 }) // 0=Monday
   const [name, setName] = useState('')
   const [showTypePicker, setShowTypePicker] = useState(false)
   const [activeRest, setActiveRest] = useState(null)
   const [restTime, setRestTime] = useState(0)
   const [restDuration, setRestDuration] = useState(90)
   const [showFinishModal, setShowFinishModal] = useState(false)
+  const [showCompleteScreen, setShowCompleteScreen] = useState(false)
+  const [completedWorkoutData, setCompletedWorkoutData] = useState(null)
   const [editingFolder, setEditingFolder] = useState(null)
   const [editingFolderName, setEditingFolderName] = useState('')
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [deletingFolder, setDeletingFolder] = useState(null)
-  const [deletingTemplate, setDeletingTemplate] = useState(null) // { fi, ti }
+  const [deletingTemplate, setDeletingTemplate] = useState(null)
   const [editingTemplate, setEditingTemplate] = useState(null)
   const [showEmptyNameModal, setShowEmptyNameModal] = useState(false)
   const [emptyWorkoutName, setEmptyWorkoutName] = useState('')
   const [pendingStart, setPendingStart] = useState(null)
+  const [incompleteSetsWarning, setIncompleteSetsWarning] = useState(null)
   const restStartRef = useRef(null)
 
   useEffect(() => { const t = setTimeout(() => setShowSplash(false), 1500); return () => clearTimeout(t) }, [])
@@ -87,8 +99,8 @@ function App() {
   useEffect(() => { localStorage.setItem('folders', JSON.stringify(folders)) }, [folders])
   useEffect(() => { localStorage.setItem('defaultRest', String(defaultRest)) }, [defaultRest])
   useEffect(() => { localStorage.setItem('bodyweight', String(bodyweight)) }, [bodyweight])
+  useEffect(() => { localStorage.setItem('weekStart', String(weekStart)) }, [weekStart])
 
-  // Restore active workout
   useEffect(() => {
     if (exercises.length > 0) {
       const savedName = localStorage.getItem('workoutName')
@@ -103,7 +115,6 @@ function App() {
   useEffect(() => { localStorage.setItem('workoutName', workoutName) }, [workoutName])
   useEffect(() => { if (workoutStartTime) localStorage.setItem('workoutStartTime', String(workoutStartTime)) }, [workoutStartTime])
 
-  // Workout timer
   useEffect(() => {
     if (!workoutActive || !workoutStartTime) return
     const tick = () => setWorkoutElapsed(Math.floor((Date.now() - workoutStartTime) / 1000))
@@ -112,7 +123,6 @@ function App() {
     return () => clearInterval(interval)
   }, [workoutActive, workoutStartTime])
 
-  // Rest timer
   useEffect(() => {
     if (!activeRest) return
     if (restTime <= 0) { completeRest(); return }
@@ -128,7 +138,6 @@ function App() {
     setExercises(n); setActiveRest(null); setRestTime(0); restStartRef.current = null
     if (navigator.vibrate) navigator.vibrate([200, 100, 200])
   }
-
   function skipRest() { completeRest() }
 
   function tryStart(type, data) {
@@ -153,7 +162,6 @@ function App() {
   }
 
   function confirmDiscardAndStart() { if (!pendingStart) return; setExercises([]); setActiveRest(null); setRestTime(0); executeStart(pendingStart.type, pendingStart.data) }
-
   function startEmpty() { setEmptyWorkoutName(''); setShowEmptyNameModal(true) }
   function confirmEmptyStart() { if (!emptyWorkoutName) return; setShowEmptyNameModal(false); tryStart('empty', { name: emptyWorkoutName }) }
 
@@ -173,6 +181,104 @@ function App() {
     return null
   }
 
+  // --- PR logic ---
+  function getPRForExercise(eName, eType) {
+    let best = null
+    for (const w of history) for (const ex of w.exercises) if (ex.name === eName) for (const s of ex.sets) {
+      const val = getPRValue(s, eType || 'weight_reps')
+      if (val !== null && (best === null || val > best)) best = val
+    }
+    return best
+  }
+
+  function getPRValue(set, type) {
+    switch (type) {
+      case 'weight_reps': { const kg = Number(set.kg||0); const r = Number(set.reps||0); return kg > 0 && r > 0 ? kg * r : null }
+      case 'bw_reps': { const r = Number(set.reps||0); return r > 0 ? (bodyweight + Number(set.kg||0)) * r : null }
+      case 'reps_only': { const r = Number(set.reps||0); return r > 0 ? r : null }
+      case 'time_only': { const t = parseTimeToSeconds(set.time); return t > 0 ? t : null }
+      case 'distance_time': { const d = Number(set.distance||0); return d > 0 ? d : null }
+      default: return null
+    }
+  }
+
+  function getPRDisplay(set, type) {
+    switch (type) {
+      case 'weight_reps': return `${set.kg} kg × ${set.reps}`
+      case 'bw_reps': return `${Number(set.kg||0) > 0 ? '+' : ''}${set.kg||0} kg × ${set.reps}`
+      case 'reps_only': return `${set.reps} reps`
+      case 'time_only': return set.time
+      case 'distance_time': return `${set.distance} km`
+      default: return ''
+    }
+  }
+
+  function findNewPRs(completedExercises) {
+    const prs = []
+    for (const ex of completedExercises) {
+      const type = ex.type || 'weight_reps'
+      const oldBest = getPRForExercise(ex.name, type)
+      let sessionBest = null; let sessionBestSet = null
+      for (const s of ex.sets) {
+        if (!s.done) continue
+        const val = getPRValue(s, type)
+        if (val !== null && (sessionBest === null || val > sessionBest)) { sessionBest = val; sessionBestSet = s }
+      }
+      if (sessionBest !== null && (oldBest === null || sessionBest > oldBest)) {
+        prs.push({ name: ex.name, type, display: getPRDisplay(sessionBestSet, type) })
+      }
+    }
+    return prs
+  }
+
+  // --- Progression vs last same template ---
+  function getProgression(templateName, currentExercises, currentDuration) {
+    if (!templateName) return null
+    const prev = history.find(w => w.templateName === templateName)
+    if (!prev) return null
+
+    const curDoneSets = currentExercises.flatMap(ex => ex.sets.filter(s => s.done))
+    const prevDoneSets = prev.exercises.flatMap(ex => ex.sets.filter(s => s.done))
+    const curVolume = curDoneSets.reduce((sum, s) => sum + (Number(s.kg||0) * Number(s.reps||0)), 0)
+    const prevVolume = prevDoneSets.reduce((sum, s) => sum + (Number(s.kg||0) * Number(s.reps||0)), 0)
+    const curSetCount = curDoneSets.length
+    const prevSetCount = prevDoneSets.length
+    const prevDuration = prev.duration || 0
+
+    return { curVolume, prevVolume, curSetCount, prevSetCount, curDuration: currentDuration, prevDuration }
+  }
+
+  function countTemplateUses(templateName) {
+    return history.filter(w => w.templateName === templateName).length
+  }
+
+  // --- Week streak ---
+  function getWeekDays() {
+    const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+    const shifted = [...days.slice(weekStart), ...days.slice(0, weekStart)]
+    return shifted
+  }
+
+  function getWeekStreak() {
+    const now = new Date(); now.setHours(0,0,0,0)
+    const jsDay = now.getDay() // 0=Sun
+    const dayMap = [6,0,1,2,3,4,5] // convert JS day to Mon=0
+    const todayIdx = dayMap[jsDay]
+    const offset = (todayIdx - weekStart + 7) % 7
+    const weekStartDate = new Date(now); weekStartDate.setDate(weekStartDate.getDate() - offset)
+
+    const result = []
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(weekStartDate); d.setDate(d.getDate() + i)
+      const dateStr = d.toLocaleDateString('en-GB')
+      const worked = history.some(w => w.date === dateStr)
+      const isToday = i === offset
+      result.push({ worked, isToday })
+    }
+    return result
+  }
+
+  // --- Exercise management ---
   function addExercise() { if (name === '') return; setShowTypePicker(true) }
   function confirmAddExercise(type) { setExercises([...exercises, { name, type, sets: [], restOverride: null, note: '' }]); setName(''); setShowTypePicker(false) }
   function updateExerciseRest(exIndex, value) { const n = [...exercises]; n[exIndex].restOverride = value === '' ? null : Number(value); setExercises(n) }
@@ -227,12 +333,7 @@ function App() {
     }, 50)
   }
 
-  function deleteSet(exIndex, setIndex) {
-    const n = [...exercises]; n[exIndex].sets.splice(setIndex, 1)
-    if (n[exIndex].sets.length === 0) n.splice(exIndex, 1)
-    setExercises(n)
-  }
-
+  function deleteSet(exIndex, setIndex) { const n = [...exercises]; n[exIndex].sets.splice(setIndex, 1); if (n[exIndex].sets.length === 0) n.splice(exIndex, 1); setExercises(n) }
   function updateSet(exIndex, setIndex, field, value) { const n = [...exercises]; n[exIndex].sets[setIndex][field] = value; setExercises(n) }
 
   function doneSet(exIndex, setIndex) {
@@ -255,15 +356,40 @@ function App() {
     return null
   }
 
-  function finishWorkout() { if (exercises.length === 0) return; setShowFinishModal(true) }
+  function getBestSet(eName) {
+    let best = null
+    for (const w of history) for (const ex of w.exercises) if (ex.name === eName) for (const s of ex.sets) {
+      const vol = Number(s.kg || 0) * Number(s.reps || 0)
+      if (!best || vol > best.volume) best = { kg: s.kg, reps: s.reps, volume: vol }
+    }
+    return best
+  }
+
+  function finishWorkout() {
+    if (exercises.length === 0) return
+    const totalSets = exercises.reduce((sum, ex) => sum + ex.sets.length, 0)
+    const doneSets = exercises.reduce((sum, ex) => sum + ex.sets.filter(s => s.done).length, 0)
+    if (doneSets === 0) return
+    if (doneSets < totalSets) {
+      setIncompleteSetsWarning({ total: totalSets, done: doneSets })
+      return
+    }
+    setShowFinishModal(true)
+  }
 
   function confirmFinish(updateAll) {
     let templateName = null
     for (const f of folders) for (const t of f.templates) if (t.name === workoutName) { templateName = workoutName; break }
 
     const duration = Math.floor((Date.now() - workoutStartTime) / 1000)
+    const doneSets = exercises.flatMap(ex => ex.sets.filter(s => s.done))
+    const totalVolume = doneSets.reduce((sum, s) => sum + (Number(s.kg||0) * Number(s.reps||0)), 0)
+    const newPRs = findNewPRs(exercises)
+    const progression = getProgression(templateName, exercises, duration)
+    const templateUseCount = templateName ? countTemplateUses(templateName) : 0
+    const nextSuggested = getSuggestedNextFromTemplate(templateName)
+
     const workout = { date: new Date().toLocaleDateString('en-GB'), name: workoutName, templateName, duration, exercises }
-    setHistory([workout, ...history])
 
     if (updateAll) {
       const nf = [...folders]
@@ -277,10 +403,39 @@ function App() {
       }
       setFolders(nf)
     }
-    setExercises([]); setActiveRest(null); setRestTime(0); setShowFinishModal(false)
+
+    // Build complete screen data BEFORE saving to history
+    setCompletedWorkoutData({
+      name: workoutName, templateName, duration, setCount: doneSets.length, volume: totalVolume,
+      newPRs, progression, templateUseCount,
+      suggestedNext: nextSuggested
+    })
+
+    // NOW save to history
+    setHistory([workout, ...history])
+    setShowFinishModal(false)
+    setShowCompleteScreen(true)
+
+    setExercises([]); setActiveRest(null); setRestTime(0)
     setWorkoutActive(false); setWorkoutName(''); setWorkoutStartTime(null); setWorkoutElapsed(0)
     localStorage.removeItem('workoutStartTime')
   }
+
+  function getSuggestedNextFromTemplate(templateName) {
+    if (!templateName) return getSuggestedNext()
+    for (let fi = 0; fi < folders.length; fi++) {
+      const folder = folders[fi]
+      for (let ti = 0; ti < folder.templates.length; ti++) {
+        if (folder.templates[ti].name === templateName) {
+          const next = (ti + 1) % folder.templates.length
+          return { template: folder.templates[next], folderName: folder.name }
+        }
+      }
+    }
+    return null
+  }
+
+  function dismissCompleteScreen() { setShowCompleteScreen(false); setCompletedWorkoutData(null) }
 
   function cancelWorkout() {
     setExercises([]); setActiveRest(null); setRestTime(0)
@@ -289,32 +444,23 @@ function App() {
   }
 
   function saveTemplate() { if (exercises.length === 0) return; setShowSaveModal(true) }
-
   function confirmSaveTemplate(folderIndex, templateName) {
-    const template = {
-      name: templateName,
-      exercises: exercises.map(ex => ({
-        name: ex.name, type: ex.type || 'weight_reps',
-        sets: ex.sets.map(s => { const c = { ...s }; delete c.done; delete c.restTime; return c }),
-        restOverride: ex.restOverride, note: ex.note || ''
-      }))
-    }
+    const template = { name: templateName, exercises: exercises.map(ex => ({ name: ex.name, type: ex.type || 'weight_reps', sets: ex.sets.map(s => { const c = { ...s }; delete c.done; delete c.restTime; return c }), restOverride: ex.restOverride, note: ex.note || '' })) }
     const nf = [...folders]; nf[folderIndex].templates.push(template); setFolders(nf); setShowSaveModal(false)
   }
 
   function editTemplate(fi, ti) {
     const t = folders[fi].templates[ti]
     setExercises(t.exercises.map(ex => ({ name: ex.name, type: ex.type || 'weight_reps', sets: ex.sets.map(s => ({ ...s, done: false })), restOverride: ex.restOverride !== undefined ? ex.restOverride : null, note: ex.note || '' })))
-    setEditingTemplate({ folderIndex: fi, templateIndex: ti })
-    setWorkoutActive(true); setWorkoutName(t.name)
+    setEditingTemplate({ folderIndex: fi, templateIndex: ti }); setWorkoutActive(true); setWorkoutName(t.name)
   }
 
   function saveEditedTemplate() {
     if (!editingTemplate) return
     const { folderIndex, templateIndex } = editingTemplate
-    const nf = [...folders]; const oldName = nf[folderIndex].templates[templateIndex].name
+    const nf = [...folders]
     nf[folderIndex].templates[templateIndex] = {
-      name: oldName,
+      name: workoutName,
       exercises: exercises.map(ex => ({
         name: ex.name, type: ex.type || 'weight_reps',
         sets: ex.sets.map(s => { const c = { ...s }; delete c.done; delete c.restTime; return c }),
@@ -323,13 +469,27 @@ function App() {
     }
     setFolders(nf); setExercises([]); setEditingTemplate(null); setWorkoutActive(false); setWorkoutName('')
   }
-
   function cancelEditTemplate() { setExercises([]); setEditingTemplate(null); setWorkoutActive(false); setWorkoutName('') }
 
   function requestDeleteTemplate(fi, ti) { setDeletingTemplate({ fi, ti }) }
-  function confirmDeleteTemplate() {
-    if (!deletingTemplate) return
-    const nf = [...folders]; nf[deletingTemplate.fi].templates.splice(deletingTemplate.ti, 1); setFolders(nf); setDeletingTemplate(null)
+  function confirmDeleteTemplate() { if (!deletingTemplate) return; const nf = [...folders]; nf[deletingTemplate.fi].templates.splice(deletingTemplate.ti, 1); setFolders(nf); setDeletingTemplate(null) }
+
+  function duplicateTemplate(fi, ti) {
+    const nf = [...folders]
+    const orig = nf[fi].templates[ti]
+    const copy = JSON.parse(JSON.stringify(orig))
+    copy.name = orig.name + ' (copy)'
+    nf[fi].templates.splice(ti + 1, 0, copy)
+    setFolders(nf)
+  }
+
+  function newBlankTemplate(fi) {
+    const nf = [...folders]
+    nf[fi].templates.push({ name: 'New Template', exercises: [] })
+    nf[fi].open = true
+    setFolders(nf)
+    const ti = nf[fi].templates.length - 1
+    editTemplate(fi, ti)
   }
 
   function addFolder() { const nf = [...folders, { name: 'New Folder', open: true, templates: [] }]; setFolders(nf); setEditingFolder(nf.length - 1); setEditingFolderName('New Folder') }
@@ -340,16 +500,25 @@ function App() {
   function confirmDeleteFolder() { if (deletingFolder === null) return; const nf = [...folders]; const r = nf.filter((_, i) => i !== deletingFolder); r[0].templates.push(...nf[deletingFolder].templates); setFolders(r); setDeletingFolder(null) }
   function moveFolderUp(i) { if (i === 0) return; const f = [...folders]; [f[i-1], f[i]] = [f[i], f[i-1]]; setFolders(f) }
   function moveFolderDown(i) { if (i >= folders.length-1) return; const f = [...folders]; [f[i+1], f[i]] = [f[i], f[i+1]]; setFolders(f) }
-  function moveTemplateUp(fi, ti) { if (ti === 0) return; const f = [...folders]; [f[fi].templates[ti-1], f[fi].templates[ti]] = [f[fi].templates[ti], f[fi].templates[ti-1]]; setFolders(f) }
-  function moveTemplateDown(fi, ti) { if (ti >= folders[fi].templates.length-1) return; const f = [...folders]; [f[fi].templates[ti+1], f[fi].templates[ti]] = [f[fi].templates[ti], f[fi].templates[ti+1]]; setFolders(f) }
-
-  function getBestSet(eName) {
-    let best = null
-    for (const w of history) for (const ex of w.exercises) if (ex.name === eName) for (const s of ex.sets) {
-      const vol = Number(s.kg || 0) * Number(s.reps || 0)
-      if (!best || vol > best.volume) best = { kg: s.kg, reps: s.reps, volume: vol }
+  function moveTemplateUp(fi, ti) {
+    const f = [...folders]
+    if (ti > 0) {
+      [f[fi].templates[ti-1], f[fi].templates[ti]] = [f[fi].templates[ti], f[fi].templates[ti-1]]
+    } else if (fi > 0) {
+      const t = f[fi].templates.splice(0, 1)[0]
+      f[fi-1].templates.push(t)
     }
-    return best
+    setFolders(f)
+  }
+  function moveTemplateDown(fi, ti) {
+    const f = [...folders]
+    if (ti < f[fi].templates.length - 1) {
+      [f[fi].templates[ti+1], f[fi].templates[ti]] = [f[fi].templates[ti], f[fi].templates[ti+1]]
+    } else if (fi < f.length - 1) {
+      const t = f[fi].templates.splice(ti, 1)[0]
+      f[fi+1].templates.unshift(t)
+    }
+    setFolders(f)
   }
 
   function formatTime(sec) { return `${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}` }
@@ -388,14 +557,8 @@ function App() {
                   <h3 className="text-sm font-semibold text-[#7B7BFF] uppercase tracking-wide mb-3">Recent workouts</h3>
                   {history.slice(0, 10).map((w, i) => (
                     <div key={i} className="bg-[#13132A] border border-[#232340] rounded-xl p-4 mb-3">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-bold">{w.name || w.date}</span>
-                        <span className="text-xs text-[#555]">{relativeTime(w.date)}</span>
-                      </div>
-                      <div className="flex items-center gap-3 mb-2 text-[10px] text-[#555]">
-                        {w.duration && <span>{formatDuration(w.duration)}</span>}
-                        <span>{w.exercises.reduce((s, ex) => s + ex.sets.length, 0)} sets</span>
-                      </div>
+                      <div className="flex justify-between items-center mb-2"><span className="text-sm font-bold">{w.name || w.date}</span><span className="text-xs text-[#555]">{relativeTime(w.date)}</span></div>
+                      <div className="flex items-center gap-3 mb-2 text-[11px] text-[#777]">{w.duration && <span>{formatDuration(w.duration)}</span>}<span>{w.exercises.reduce((s, ex) => s + ex.sets.length, 0)} sets</span></div>
                       {w.exercises.map((ex, j) => <div key={j} className="text-xs text-[#666] ml-1">{ex.name} — {ex.sets.length} sets</div>)}
                     </div>
                   ))}
@@ -409,78 +572,51 @@ function App() {
             </div>
           )}
 
-          {/* WORKOUT — START SCREEN */}
-          {page === 'workout' && !workoutActive && (
+          {/* WORKOUT COMPLETE SCREEN */}
+          {page === 'workout' && showCompleteScreen && completedWorkoutData && (
+            <WorkoutCompleteScreen data={completedWorkoutData} weekDays={getWeekDays()} weekStreak={getWeekStreak()} onDone={dismissCompleteScreen} formatDuration={formatDuration} />
+          )}
+
+          {/* WORKOUT START SCREEN */}
+          {page === 'workout' && !workoutActive && !showCompleteScreen && (
             <div>
               <h1 className="text-2xl font-bold tracking-tight mb-1">HUTRAZ</h1>
               <p className="text-xs text-[#7B7BFF] mb-6">Simple tracking. Real progress.</p>
 
-              {/* LAST */}
-              <div className="text-[10px] font-bold text-[#555] uppercase tracking-wider mb-2">
-                Last workout {lastWorkout ? `· ${relativeTime(lastWorkout.date)}` : ''}
-              </div>
+              <div className="text-[11px] font-bold text-[#777] uppercase tracking-wider mb-2">Last workout {lastWorkout ? `· ${relativeTime(lastWorkout.date)}` : ''}</div>
               <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-4 mb-4">
                 {lastWorkout ? (<>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-[15px] font-bold">{lastWorkout.name || lastWorkout.date}</span>
-                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide bg-[#7B7BFF]/10 text-[#7B7BFF]">Last</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {lastWorkout.exercises.map((ex, i) => <span key={i} className="bg-[#1C1C38] rounded-md px-2 py-0.5 text-[10px] text-[#888]">{ex.name}</span>)}
-                  </div>
-                  <div className="flex items-center gap-3 mb-3 text-[10px] text-[#555]">
-                    {lastWorkout.duration && <span>{formatDuration(lastWorkout.duration)}</span>}
-                    <span>{lastWorkout.exercises.reduce((s, ex) => s + ex.sets.length, 0)} sets</span>
-                    <span>{lastWorkout.exercises.length} exercises</span>
-                  </div>
-                  <button onClick={() => tryStart('last', lastWorkout)} className="flex items-center justify-center gap-2 w-full py-2 mt-2 border-[1.5px] border-[#7B7BFF] rounded-xl text-xs font-bold text-[#7B7BFF] hover:bg-[#7B7BFF]/8 transition-colors">
-                    <PlayIcon className="w-3 h-3" /> Start
-                  </button>
+                  <div className="flex justify-between items-center mb-2"><span className="text-[15px] font-bold">{lastWorkout.name || lastWorkout.date}</span><span className="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide bg-[#7B7BFF]/10 text-[#7B7BFF]">Last</span></div>
+                  <div className="flex flex-wrap gap-1 mb-2">{lastWorkout.exercises.map((ex, i) => <span key={i} className="bg-[#1C1C38] rounded-md px-2 py-0.5 text-[11px] text-[#aaa]">{ex.name}</span>)}</div>
+                  <div className="flex items-center gap-3 mb-3 text-[11px] text-[#777]">{lastWorkout.duration && <span>{formatDuration(lastWorkout.duration)}</span>}<span>{lastWorkout.exercises.reduce((s, ex) => s + ex.sets.length, 0)} sets</span><span>{lastWorkout.exercises.length} exercises</span></div>
+                  <button onClick={() => tryStart('last', lastWorkout)} className="flex items-center justify-center gap-2 w-full py-2 mt-2 border-[1.5px] border-[#7B7BFF] rounded-xl text-xs font-bold text-[#7B7BFF] hover:bg-[#7B7BFF]/8 transition-colors"><PlayIcon className="w-3 h-3" /> Start</button>
                 </>) : <div className="text-xs text-[#444] italic py-2">{disabledText}</div>}
               </div>
 
-              {/* SUGGESTED */}
-              <div className="text-[10px] font-bold text-[#555] uppercase tracking-wider mb-2">Suggested next</div>
+              <div className="text-[11px] font-bold text-[#777] uppercase tracking-wider mb-2">Suggested next</div>
               <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-4 mb-4">
                 {suggestedNext ? (<>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-[15px] font-bold">{suggestedNext.template.name}</span>
-                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide bg-[#5BF5A0]/10 text-[#5BF5A0]">Up next</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {suggestedNext.template.exercises.map((ex, i) => <span key={i} className="bg-[#1C1C38] rounded-md px-2 py-0.5 text-[10px] text-[#888]">{ex.name}</span>)}
-                  </div>
-                  <div className="flex items-center gap-3 mb-3 text-[10px] text-[#555]">
-                    <span>{suggestedNext.template.exercises.reduce((s, ex) => s + ex.sets.length, 0)} sets</span>
-                    <span>{suggestedNext.folderName}</span>
-                  </div>
-                  <button onClick={() => tryStart('template', suggestedNext.template)} className="flex items-center justify-center gap-2 w-full py-2 mt-2 border-[1.5px] border-[#7B7BFF] rounded-xl text-xs font-bold text-[#7B7BFF] hover:bg-[#7B7BFF]/8 transition-colors">
-                    <PlayIcon className="w-3 h-3" /> Start
-                  </button>
+                  <div className="flex justify-between items-center mb-2"><span className="text-[15px] font-bold">{suggestedNext.template.name}</span><span className="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide bg-[#5BF5A0]/10 text-[#5BF5A0]">Up next</span></div>
+                  <div className="flex flex-wrap gap-1 mb-2">{suggestedNext.template.exercises.map((ex, i) => <span key={i} className="bg-[#1C1C38] rounded-md px-2 py-0.5 text-[11px] text-[#aaa]">{ex.name}</span>)}</div>
+                  <div className="flex items-center gap-3 mb-3 text-[11px] text-[#777]"><span>{suggestedNext.template.exercises.reduce((s, ex) => s + ex.sets.length, 0)} sets</span><span>{suggestedNext.folderName}</span></div>
+                  <button onClick={() => tryStart('template', suggestedNext.template)} className="flex items-center justify-center gap-2 w-full py-2 mt-2 border-[1.5px] border-[#7B7BFF] rounded-xl text-xs font-bold text-[#7B7BFF] hover:bg-[#7B7BFF]/8 transition-colors"><PlayIcon className="w-3 h-3" /> Start</button>
                 </>) : <div className="text-xs text-[#444] italic py-2">{isNew ? disabledText : 'Use templates to get suggestions'}</div>}
               </div>
 
-              {/* EMPTY */}
-              <div className="text-[10px] font-bold text-[#555] uppercase tracking-wider mb-2">Start fresh</div>
+              <div className="text-[11px] font-bold text-[#777] uppercase tracking-wider mb-2">Start fresh</div>
               <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-4 mb-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-[15px] font-bold">Empty workout</span>
-                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide bg-white/5 text-[#888]">New</span>
-                </div>
+                <div className="flex justify-between items-center mb-2"><span className="text-[15px] font-bold">Empty workout</span><span className="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide bg-white/5 text-[#888]">New</span></div>
                 <div className="text-[11px] text-[#666] mb-3">Start fresh and add exercises as you go</div>
-                <button onClick={startEmpty} className="flex items-center justify-center gap-2 w-full py-2 border-[1.5px] border-[#7B7BFF] rounded-xl text-xs font-bold text-[#7B7BFF] hover:bg-[#7B7BFF]/8 transition-colors">
-                  <PlayIcon className="w-3 h-3" /> Start
-                </button>
+                <button onClick={startEmpty} className="flex items-center justify-center gap-2 w-full py-2 border-[1.5px] border-[#7B7BFF] rounded-xl text-xs font-bold text-[#7B7BFF] hover:bg-[#7B7BFF]/8 transition-colors"><PlayIcon className="w-3 h-3" /> Start</button>
               </div>
 
               {/* TEMPLATES */}
               <div className="border-t border-[#1a1a30] pt-6 mt-4">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-semibold text-[#7B7BFF] uppercase tracking-wide">Templates</h3>
-                  <button onClick={addFolder} className="text-[10px] font-semibold text-[#555] border border-[#2A2A4A] px-3 py-1.5 rounded-lg hover:border-[#7B7BFF] hover:text-[#7B7BFF] transition-colors">+ Folder</button>
+                  <button onClick={addFolder} className="text-[11px] font-semibold text-[#777] border border-[#2A2A4A] px-3 py-1.5 rounded-lg hover:border-[#7B7BFF] hover:text-[#7B7BFF] transition-colors">+ Folder</button>
                 </div>
-                <div className="text-[10px] text-[#444] mb-4">Tap folder to open/close · Use <span className="inline-flex flex-col align-middle mx-0.5"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-2.5 h-2.5 stroke-[#555]"><polyline points="18 15 12 9 6 15"/></svg><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-2.5 h-2.5 stroke-[#555]"><polyline points="6 9 12 15 18 9"/></svg></span> to reorder</div>
-
+                <div className="text-[11px] text-[#666] mb-4">Tap folder to open/close · Use <span className="inline-flex flex-col align-middle mx-0.5"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-2.5 h-2.5 stroke-[#555]"><polyline points="18 15 12 9 6 15"/></svg><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-2.5 h-2.5 stroke-[#555]"><polyline points="6 9 12 15 18 9"/></svg></span> to reorder</div>
                 {folders.map((folder, fi) => (
                   <div key={fi} className="mb-3">
                     <div className="flex items-center gap-2 mb-1.5">
@@ -491,7 +627,7 @@ function App() {
                       <button onClick={() => toggleFolder(fi)} className="flex items-center gap-2 flex-1 min-w-0">
                         <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={`w-4 h-4 shrink-0 transition-colors ${folder.open ? 'stroke-[#7B7BFF] fill-[#7B7BFF]/10' : 'stroke-[#555]'}`}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
                         {editingFolder === fi ? <input type="text" value={editingFolderName} onChange={(e) => setEditingFolderName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && confirmEditFolder()} onBlur={confirmEditFolder} autoFocus onClick={(e) => e.stopPropagation()} className="bg-[#1C1C38] border border-[#7B7BFF] rounded-lg px-2 py-1 text-sm font-semibold text-white outline-none flex-1 min-w-0" /> : <span className="text-sm font-semibold truncate">{folder.name}</span>}
-                        <span className="text-[10px] text-[#555] shrink-0">{folder.templates.length}</span>
+                        <span className="text-[11px] text-[#777] shrink-0">{folder.templates.length}</span>
                         <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className={`w-3.5 h-3.5 stroke-[#444] shrink-0 transition-transform ${folder.open ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
                       </button>
                       {editingFolder !== fi && (
@@ -503,27 +639,27 @@ function App() {
                     </div>
                     {folder.open && (
                       <div className="ml-7 border-l border-[#1a1a30] pl-3">
-                        {folder.templates.length === 0 ? (
-                          <div className="text-[10px] text-[#444] py-3 italic">No templates</div>
-                        ) : folder.templates.map((t, ti) => (
+                        {folder.templates.length === 0 ? <div className="text-[11px] text-[#666] py-3 italic">No templates</div> : folder.templates.map((t, ti) => (
                           <div key={ti} className="bg-[#13132A] border border-[#232340] rounded-xl p-3.5 mb-2">
                             <div className="flex items-center gap-2">
                               <div className="flex flex-col shrink-0">
-                                <button onClick={() => moveTemplateUp(fi, ti)} className={`text-[#444] p-0.5 ${ti === 0 ? 'opacity-20' : 'hover:text-[#7B7BFF]'}`} disabled={ti === 0}><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-2.5 h-2.5 stroke-current"><polyline points="18 15 12 9 6 15"/></svg></button>
-                                <button onClick={() => moveTemplateDown(fi, ti)} className={`text-[#444] p-0.5 ${ti >= folder.templates.length-1 ? 'opacity-20' : 'hover:text-[#7B7BFF]'}`} disabled={ti >= folder.templates.length-1}><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-2.5 h-2.5 stroke-current"><polyline points="6 9 12 15 18 9"/></svg></button>
+                                <button onClick={() => moveTemplateUp(fi, ti)} className={`text-[#444] p-0.5 ${ti === 0 && fi === 0 ? 'opacity-20' : 'hover:text-[#7B7BFF]'}`} disabled={ti === 0 && fi === 0}><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-2.5 h-2.5 stroke-current"><polyline points="18 15 12 9 6 15"/></svg></button>
+                                <button onClick={() => moveTemplateDown(fi, ti)} className={`text-[#444] p-0.5 ${ti >= folder.templates.length-1 && fi >= folders.length-1 ? 'opacity-20' : 'hover:text-[#7B7BFF]'}`} disabled={ti >= folder.templates.length-1 && fi >= folders.length-1}><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-2.5 h-2.5 stroke-current"><polyline points="6 9 12 15 18 9"/></svg></button>
                               </div>
                               <div className="flex-1 min-w-0">
-                                <div className="flex justify-between items-center mb-1.5"><span className="font-bold text-sm truncate">{t.name}</span><span className="text-[10px] text-[#555] shrink-0 ml-2">{t.exercises.length} ex</span></div>
-                                {t.exercises.map((ex, j) => <div key={j} className="flex items-center gap-1.5 ml-0.5 mb-0.5"><TypeIcon type={ex.type || 'weight_reps'} size="w-3 h-3" /><span className="text-[10px] text-[#666]">{ex.name} — {ex.sets.length} sets</span></div>)}
+                                <div className="flex justify-between items-center mb-1.5"><span className="font-bold text-sm truncate">{t.name}</span><span className="text-[11px] text-[#777] shrink-0 ml-2">{t.exercises.length} ex</span></div>
+                                {t.exercises.map((ex, j) => <div key={j} className="flex items-center gap-1.5 ml-0.5 mb-0.5"><TypeIcon type={ex.type || 'weight_reps'} size="w-3 h-3" /><span className="text-[11px] text-[#888]">{ex.name} — {ex.sets.length} sets</span></div>)}
                               </div>
                             </div>
                             <div className="flex gap-2 mt-2.5">
                               <button onClick={() => tryStart('template', t)} className="flex-1 flex items-center justify-center gap-1.5 py-2 border-[1.5px] border-[#7B7BFF] rounded-lg text-xs font-bold text-[#7B7BFF] hover:bg-[#7B7BFF]/8 transition-colors"><PlayIcon className="w-2.5 h-2.5" />Start</button>
-                              <button onClick={() => editTemplate(fi, ti)} className="py-2 px-3 border border-[#2A2A4A] rounded-lg text-[10px] font-semibold text-[#888] hover:border-[#7B7BFF] hover:text-[#7B7BFF] transition-colors">Edit</button>
-                              <button onClick={() => requestDeleteTemplate(fi, ti)} className="py-2 px-3 border border-[#2A2A4A] rounded-lg text-[10px] font-semibold text-[#555] hover:border-red-500/50 hover:text-red-400 transition-colors">Delete</button>
+                              <button onClick={() => editTemplate(fi, ti)} className="py-2 px-3 border border-[#2A2A4A] rounded-lg text-[11px] font-semibold text-[#aaa] hover:border-[#7B7BFF] hover:text-[#7B7BFF] transition-colors">Edit</button>
+                              <button onClick={() => duplicateTemplate(fi, ti)} className="py-2 px-3 border border-[#2A2A4A] rounded-lg text-[11px] font-semibold text-[#aaa] hover:border-[#7B7BFF] hover:text-[#7B7BFF] transition-colors">Copy</button>
+                              <button onClick={() => requestDeleteTemplate(fi, ti)} className="py-2 px-3 border border-[#2A2A4A] rounded-lg text-[11px] font-semibold text-[#777] hover:border-red-500/50 hover:text-red-400 transition-colors">Delete</button>
                             </div>
                           </div>
                         ))}
+                        <button onClick={() => newBlankTemplate(fi)} className="w-full py-2.5 border border-dashed border-[#2A2A4A] rounded-xl text-[11px] font-semibold text-[#777] hover:border-[#7B7BFF] hover:text-[#7B7BFF] transition-colors mb-1">+ New template</button>
                       </div>
                     )}
                   </div>
@@ -533,36 +669,35 @@ function App() {
           )}
 
           {/* ACTIVE WORKOUT */}
-          {page === 'workout' && workoutActive && (
+          {page === 'workout' && workoutActive && !showCompleteScreen && (
             <div>
               <div className="flex items-center justify-between mb-1">
                 <h1 className="text-2xl font-bold tracking-tight">{workoutName || 'Workout'}</h1>
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1.5 text-[#5BF5A0] text-sm font-bold tabular-nums">
-                    <div className="w-2 h-2 bg-[#5BF5A0] rounded-full animate-pulse" />
-                    {formatTime(workoutElapsed)}
-                  </div>
-                  <button onClick={cancelWorkout} className="text-[10px] font-semibold text-[#555] border border-[#2A2A4A] px-3 py-1.5 rounded-lg hover:border-red-500/50 hover:text-red-400 transition-colors">Cancel</button>
+                  <div className="flex items-center gap-1.5 text-[#5BF5A0] text-sm font-bold tabular-nums"><div className="w-2 h-2 bg-[#5BF5A0] rounded-full animate-pulse" />{formatTime(workoutElapsed)}</div>
+                  <button onClick={cancelWorkout} className="text-[11px] font-semibold text-[#777] border border-[#2A2A4A] px-3 py-1.5 rounded-lg hover:border-red-500/50 hover:text-red-400 transition-colors">Cancel</button>
                 </div>
               </div>
               <p className="text-xs text-[#7B7BFF] mb-6">Simple tracking. Real progress.</p>
 
               {editingTemplate && (
-                <div className="bg-[#7B7BFF]/10 border border-[#7B7BFF]/30 rounded-xl p-3 mb-4 flex items-center justify-between">
-                  <div>
-                    <div className="text-xs font-bold text-[#7B7BFF]">Editing template</div>
-                    <div className="text-[10px] text-[#888]">{folders[editingTemplate.folderIndex]?.templates[editingTemplate.templateIndex]?.name}</div>
-                  </div>
-                  <div className="flex gap-2">
-                    <button onClick={saveEditedTemplate} className="px-3 py-1.5 bg-[#7B7BFF] rounded-lg text-xs font-bold">Save</button>
-                    <button onClick={cancelEditTemplate} className="px-3 py-1.5 border border-[#2A2A4A] rounded-lg text-xs font-semibold text-[#888]">Cancel</button>
+                <div className="bg-[#7B7BFF]/10 border border-[#7B7BFF]/30 rounded-xl p-3 mb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0 mr-3">
+                      <div className="text-[10px] font-bold text-[#7B7BFF] uppercase tracking-wider mb-1">Editing template</div>
+                      <input type="text" value={workoutName} onChange={(e) => setWorkoutName(e.target.value)}
+                        className="w-full bg-transparent border-b border-[#7B7BFF]/30 text-sm font-bold text-white outline-none focus:border-[#7B7BFF] transition-colors pb-1" />
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <button onClick={saveEditedTemplate} className="px-3 py-1.5 bg-[#7B7BFF] rounded-lg text-xs font-bold">Save</button>
+                      <button onClick={cancelEditTemplate} className="px-3 py-1.5 border border-[#2A2A4A] rounded-lg text-xs font-semibold text-[#888]">Cancel</button>
+                    </div>
                   </div>
                 </div>
               )}
 
               {exercises.map((ex, i) => (
-                <ExerciseCard key={i} exercise={ex} exIndex={i}
-                  isEditing={!!editingTemplate} exerciseCount={exercises.length}
+                <ExerciseCard key={i} exercise={ex} exIndex={i} isEditing={!!editingTemplate} exerciseCount={exercises.length}
                   onMoveUp={moveExerciseUp} onMoveDown={moveExerciseDown} onRemoveExercise={removeExercise}
                   onAddSet={addSet} onUpdateSet={updateSet} onDoneSet={doneSet} onDeleteSet={deleteSet}
                   onUpdateExerciseRest={updateExerciseRest} onUpdateExerciseNote={updateExerciseNote}
@@ -600,13 +735,20 @@ function App() {
                     <span className="text-sm text-[#555]">kg</span>
                   </div>
                 </div>
-                <div className="mb-2">
+                <div className="mb-5">
                   <div className="text-sm font-semibold mb-1">Rest timer</div>
                   <div className="text-xs text-[#555] mb-3">Default rest duration between sets</div>
                   <div className="flex gap-2 flex-wrap">
                     {REST_PRESETS.map(s => <button key={s} onClick={() => setDefaultRest(s)} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${defaultRest === s ? 'bg-[#7B7BFF] text-white' : 'bg-[#1C1C38] border border-[#2A2A4A] text-[#888] hover:border-[#7B7BFF]'}`}>{s === 0 ? 'None' : formatTime(s)}</button>)}
                   </div>
                   <div className="text-xs text-[#444] mt-3">Current: {defaultRest === 0 ? 'None' : formatTime(defaultRest)}</div>
+                </div>
+                <div className="mb-2">
+                  <div className="text-sm font-semibold mb-1">Week starts on</div>
+                  <div className="text-xs text-[#555] mb-3">Used for weekly streak tracking</div>
+                  <div className="flex gap-2 flex-wrap">
+                    {WEEK_DAYS.map((d, i) => <button key={i} onClick={() => setWeekStart(i)} className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${weekStart === i ? 'bg-[#7B7BFF] text-white' : 'bg-[#1C1C38] border border-[#2A2A4A] text-[#888] hover:border-[#7B7BFF]'}`}>{d.slice(0,3)}</button>)}
+                  </div>
                 </div>
               </div>
               <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-5">
@@ -617,7 +759,7 @@ function App() {
           )}
         </div>
 
-        {/* TYPE PICKER */}
+        {/* MODALS */}
         {showTypePicker && (
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end justify-center z-50">
             <div className="w-full max-w-md bg-[#13132A] rounded-t-3xl p-6 pb-10">
@@ -626,7 +768,7 @@ function App() {
               <div className="flex flex-col gap-2">
                 {EXERCISE_TYPES.map(t => (
                   <button key={t.id} onClick={() => confirmAddExercise(t.id)} className="flex items-center gap-3 px-4 py-3.5 bg-[#1C1C38] border border-[#2A2A4A] rounded-xl text-left hover:border-[#7B7BFF] transition-colors">
-                    <TypeIcon type={t.id} size="w-5 h-5" /><div><div className="text-sm font-semibold">{t.label}</div><div className="text-[10px] text-[#555]">{t.desc}</div></div>
+                    <TypeIcon type={t.id} size="w-5 h-5" /><div><div className="text-sm font-semibold">{t.label}</div><div className="text-[11px] text-[#777]">{t.desc}</div></div>
                   </button>
                 ))}
               </div>
@@ -635,7 +777,6 @@ function App() {
           </div>
         )}
 
-        {/* EMPTY NAME MODAL */}
         {showEmptyNameModal && (
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end justify-center z-50">
             <div className="w-full max-w-md bg-[#13132A] rounded-t-3xl p-6 pb-10">
@@ -647,7 +788,6 @@ function App() {
           </div>
         )}
 
-        {/* FINISH MODAL */}
         {showFinishModal && (
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end justify-center z-50">
             <div className="w-full max-w-md bg-[#13132A] rounded-t-3xl p-6 pb-10">
@@ -660,7 +800,6 @@ function App() {
           </div>
         )}
 
-        {/* ACTIVE WORKOUT WARNING */}
         {pendingStart && (
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-6">
             <div className="w-full max-w-sm bg-[#13132A] border border-[#232340] rounded-2xl p-6">
@@ -673,7 +812,6 @@ function App() {
           </div>
         )}
 
-        {/* DELETE FOLDER CONFIRM */}
         {deletingFolder !== null && (
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-6">
             <div className="w-full max-w-sm bg-[#13132A] border border-[#232340] rounded-2xl p-6">
@@ -687,7 +825,6 @@ function App() {
           </div>
         )}
 
-        {/* DELETE TEMPLATE CONFIRM */}
         {deletingTemplate && (
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-6">
             <div className="w-full max-w-sm bg-[#13132A] border border-[#232340] rounded-2xl p-6">
@@ -700,17 +837,161 @@ function App() {
           </div>
         )}
 
-        {/* SAVE TEMPLATE MODAL */}
         {showSaveModal && <SaveTemplateModal folders={folders} onSave={confirmSaveTemplate} onCancel={() => setShowSaveModal(false)} />}
+
+        {/* INCOMPLETE SETS WARNING */}
+        {incompleteSetsWarning && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-6">
+            <div className="w-full max-w-sm bg-[#13132A] border border-[#232340] rounded-2xl p-6">
+              <div className="flex justify-center mb-4"><div className="w-12 h-12 bg-[#7B7BFF]/10 rounded-full flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="w-6 h-6 stroke-[#7B7BFF]"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div></div>
+              <h2 className="text-base font-bold text-center mb-2">Incomplete sets</h2>
+              <p className="text-xs text-[#888] text-center mb-5">You completed <span className="font-bold text-white">{incompleteSetsWarning.done} of {incompleteSetsWarning.total}</span> sets. Incomplete sets won't be saved.</p>
+              <button onClick={() => { setIncompleteSetsWarning(null); setShowFinishModal(true) }} className="w-full py-3 bg-gradient-to-r from-[#7B7BFF] to-[#6060DD] rounded-xl font-bold text-sm mb-2 shadow-lg shadow-[#7B7BFF]/25">Finish anyway</button>
+              <button onClick={() => setIncompleteSetsWarning(null)} className="w-full py-3 text-sm font-semibold text-[#555]">Continue workout</button>
+            </div>
+          </div>
+        )}
 
         {/* BOTTOM NAV */}
         <div className="fixed bottom-0 left-0 right-0 bg-[#0D0D1A]/95 backdrop-blur-xl border-t border-[#1a1a30] px-6 py-3 pb-8 flex justify-around max-w-md mx-auto">
           <button onClick={() => setPage('progress')} className={`flex flex-col items-center gap-1 ${page === 'progress' ? 'opacity-100' : 'opacity-40'}`}><svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className={`w-5 h-5 ${page === 'progress' ? 'stroke-[#7B7BFF]' : 'stroke-white'}`}><path d="M18 20V10M12 20V4M6 20v-6"/></svg><span className={`text-[10px] font-semibold ${page === 'progress' ? 'text-[#7B7BFF]' : 'text-white'}`}>Progress</span></button>
-          <button onClick={() => setPage('workout')} className={`flex flex-col items-center gap-1 ${page === 'workout' ? 'opacity-100' : 'opacity-40'}`}><svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className={`w-5 h-5 ${page === 'workout' ? 'stroke-[#7B7BFF]' : 'stroke-white'}`}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span className={`text-[10px] font-semibold ${page === 'workout' ? 'text-[#7B7BFF]' : 'text-white'}`}>Workout</span></button>
+          <button onClick={() => { setPage('workout'); if (showCompleteScreen) {} }} className={`flex flex-col items-center gap-1 ${page === 'workout' ? 'opacity-100' : 'opacity-40'}`}><svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className={`w-5 h-5 ${page === 'workout' ? 'stroke-[#7B7BFF]' : 'stroke-white'}`}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span className={`text-[10px] font-semibold ${page === 'workout' ? 'text-[#7B7BFF]' : 'text-white'}`}>Workout</span></button>
           <button onClick={() => setPage('profile')} className={`flex flex-col items-center gap-1 ${page === 'profile' ? 'opacity-100' : 'opacity-40'}`}><svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className={`w-5 h-5 ${page === 'profile' ? 'stroke-[#7B7BFF]' : 'stroke-white'}`}><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg><span className={`text-[10px] font-semibold ${page === 'profile' ? 'text-[#7B7BFF]' : 'text-white'}`}>Profile</span></button>
         </div>
       </div>
     </>
+  )
+}
+
+function WorkoutCompleteScreen({ data, weekDays, weekStreak, onDone, formatDuration }) {
+  const { name, templateName, duration, setCount, volume, newPRs, progression, templateUseCount, suggestedNext } = data
+  const weekWorkouts = weekStreak.filter(d => d.worked || d.isToday).length
+
+  return (
+    <div>
+      {/* Celebration */}
+      <div className="text-center py-6">
+        <div className="w-16 h-16 rounded-full bg-[#5BF5A0]/12 flex items-center justify-center mx-auto mb-4 animate-bounce">
+          <svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8 stroke-[#5BF5A0]"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h1 className="text-[22px] font-extrabold tracking-tight">Workout Complete!</h1>
+        <div className="text-[13px] font-semibold text-[#7B7BFF] mt-1">{name}</div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="bg-[#13132A] border border-[#232340] rounded-xl p-3.5 text-center">
+          <div className="text-[22px] font-extrabold">{Math.floor(duration/60)}</div>
+          <div className="text-[11px] font-bold text-[#777] uppercase tracking-wider mt-1">Minutes</div>
+        </div>
+        <div className="bg-[#13132A] border border-[#232340] rounded-xl p-3.5 text-center">
+          <div className="text-[22px] font-extrabold">{setCount}</div>
+          <div className="text-[11px] font-bold text-[#777] uppercase tracking-wider mt-1">Sets</div>
+        </div>
+        <div className="bg-[#13132A] border border-[#232340] rounded-xl p-3.5 text-center">
+          <div className="text-[22px] font-extrabold">{volume.toLocaleString()}</div>
+          <div className="text-[11px] font-bold text-[#777] uppercase tracking-wider mt-1">kg Volume</div>
+        </div>
+      </div>
+
+      {/* PRs */}
+      <div className={`border rounded-2xl p-4 mb-3 ${newPRs.length > 0 ? 'bg-gradient-to-br from-[#7B7BFF]/8 to-[#5BF5A0]/5 border-[#7B7BFF]/15' : 'bg-[#13132A] border-[#232340]'}`}>
+        <div className="flex items-center gap-1.5 mb-2.5">
+          <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`w-4 h-4 ${newPRs.length > 0 ? 'stroke-[#7B7BFF]' : 'stroke-[#444]'}`}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <span className={`text-[11px] font-bold uppercase tracking-wider ${newPRs.length > 0 ? 'text-[#7B7BFF]' : 'text-[#444]'}`}>Personal Records</span>
+        </div>
+        {newPRs.length > 0 ? newPRs.map((pr, i) => (
+          <div key={i} className="flex items-center justify-between py-1.5">
+            <span className="text-[13px] font-semibold">{pr.name}</span>
+            <span className="text-[13px] font-extrabold text-[#5BF5A0]">{pr.display}</span>
+          </div>
+        )) : (
+          <div className="text-xs text-[#555] italic">No new records today — keep pushing!</div>
+        )}
+      </div>
+
+      {/* Progression */}
+      <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-4 mb-3">
+        <div className="flex items-center gap-1.5 mb-2.5">
+          <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="w-4 h-4 stroke-[#7B7BFF]"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+          <span className="text-[11px] font-bold text-[#777] uppercase tracking-wider">
+            {templateName ? `vs. last ${templateName}` : 'Progression'}
+          </span>
+        </div>
+        {progression ? (<>
+          <div className="flex items-center justify-between py-1.5 border-b border-[#1a1a30]">
+            <span className="text-xs text-[#aaa]">Volume</span>
+            {(() => {
+              const diff = progression.curVolume - progression.prevVolume
+              if (diff > 0) return <span className="flex items-center gap-1 text-xs font-bold text-[#5BF5A0]"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-3 h-3 stroke-[#5BF5A0]"><polyline points="18 15 12 9 6 15"/></svg>+{diff.toLocaleString()} kg</span>
+              if (diff < 0) return <span className="flex items-center gap-1 text-xs font-bold text-[#ff6b6b]"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-3 h-3 stroke-[#ff6b6b]"><polyline points="6 9 12 15 18 9"/></svg>{diff.toLocaleString()} kg</span>
+              return <span className="text-xs font-bold text-[#555]">Same ({progression.curVolume.toLocaleString()} kg)</span>
+            })()}
+          </div>
+          {progression.prevDuration > 0 && (
+          <div className="flex items-center justify-between py-1.5 border-b border-[#1a1a30]">
+            <span className="text-xs text-[#aaa]">Duration</span>
+            {(() => {
+              const diffMin = Math.floor(progression.curDuration/60) - Math.floor(progression.prevDuration/60)
+              if (diffMin < 0) return <span className="flex items-center gap-1 text-xs font-bold text-[#5BF5A0]"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-3 h-3 stroke-[#5BF5A0]"><polyline points="18 15 12 9 6 15"/></svg>{Math.abs(diffMin)} min faster</span>
+              if (diffMin > 0) return <span className="flex items-center gap-1 text-xs font-bold text-[#ff6b6b]"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-3 h-3 stroke-[#ff6b6b]"><polyline points="6 9 12 15 18 9"/></svg>{diffMin} min slower</span>
+              return <span className="text-xs font-bold text-[#555]">Same ({Math.floor(progression.curDuration/60)} min)</span>
+            })()}
+          </div>
+          )}
+          <div className="flex items-center justify-between py-1.5">
+            <span className="text-xs text-[#aaa]">Sets completed</span>
+            {(() => {
+              const diff = progression.curSetCount - progression.prevSetCount
+              if (diff > 0) return <span className="flex items-center gap-1 text-xs font-bold text-[#5BF5A0]"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-3 h-3 stroke-[#5BF5A0]"><polyline points="18 15 12 9 6 15"/></svg>+{diff} sets</span>
+              if (diff < 0) return <span className="flex items-center gap-1 text-xs font-bold text-[#ff6b6b]"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-3 h-3 stroke-[#ff6b6b]"><polyline points="6 9 12 15 18 9"/></svg>{diff} sets</span>
+              return <span className="text-xs font-bold text-[#555]">Same ({progression.curSetCount})</span>
+            })()}
+          </div>
+        </>) : (
+          <div className="text-xs text-[#555] italic">{templateName ? `Shown after ${templateName} has been used twice` : 'Use templates to track progression'}</div>
+        )}
+      </div>
+
+      {/* Streak */}
+      <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-4 mb-3 flex items-center gap-4">
+        <div className="text-center shrink-0">
+          <div className="text-[28px] font-extrabold text-[#5BF5A0]">{weekWorkouts}</div>
+          <div className="text-[8px] font-bold text-[#555] uppercase tracking-wider">This week</div>
+        </div>
+        <div className="flex-1">
+          <div className="flex gap-1.5 mb-1.5">
+            {weekStreak.map((d, i) => (
+              <div key={i} className={`w-[28px] h-2 rounded-full ${d.isToday ? 'bg-[#7B7BFF]' : d.worked ? 'bg-[#5BF5A0]' : 'bg-[#1C1C38] border border-[#2A2A4A]'}`} />
+            ))}
+          </div>
+          <div className="flex gap-1.5">
+            {weekDays.map((d, i) => (
+              <span key={i} className={`w-[28px] text-center text-[7px] font-semibold ${weekStreak[i]?.isToday ? 'text-[#7B7BFF]' : 'text-[#444]'}`}>{d}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Suggested next */}
+      {suggestedNext && (
+        <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-4 mb-4">
+          <div className="text-[11px] font-bold text-[#777] uppercase tracking-wider mb-2">Suggested next</div>
+          <div className="flex justify-between items-center">
+            <span className="text-[15px] font-bold">{suggestedNext.template.name}</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide bg-[#5BF5A0]/10 text-[#5BF5A0]">Up next</span>
+          </div>
+          <div className="flex flex-wrap gap-1 mt-2">
+            {suggestedNext.template.exercises.map((ex, i) => <span key={i} className="bg-[#1C1C38] rounded-md px-2 py-0.5 text-[11px] text-[#aaa]">{ex.name}</span>)}
+          </div>
+        </div>
+      )}
+
+      {/* Done */}
+      <button onClick={onDone} className="w-full py-4 bg-gradient-to-r from-[#7B7BFF] to-[#6060DD] rounded-2xl font-bold text-base shadow-lg shadow-[#7B7BFF]/25 hover:translate-y-[-1px] active:translate-y-[1px] transition-transform mb-8">
+        Done
+      </button>
+    </div>
   )
 }
 
@@ -732,7 +1013,7 @@ function SaveTemplateModal({ folders, onSave, onCancel }) {
             {folders.map((f, i) => (
               <button key={i} onClick={() => setSelectedFolder(i)} className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-left transition-all ${selectedFolder === i ? 'bg-[#7B7BFF]/15 border border-[#7B7BFF]/40 text-white' : 'bg-[#1C1C38] border border-[#2A2A4A] text-[#888]'}`}>
                 <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={`w-4 h-4 shrink-0 ${selectedFolder === i ? 'stroke-[#7B7BFF] fill-[#7B7BFF]/10' : 'stroke-[#555]'}`}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                {f.name}<span className="text-[10px] text-[#555] ml-auto">{f.templates.length}</span>
+                {f.name}<span className="text-[11px] text-[#777] ml-auto">{f.templates.length}</span>
               </button>
             ))}
           </div>
