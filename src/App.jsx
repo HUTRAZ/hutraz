@@ -1,32 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import ExerciseCard from './ExerciseCard'
+import ExerciseLibrary from './ExerciseLibraryUI'
+import CreateExerciseModal from './CreateExerciseModal'
+import MuscleIcon from './MuscleIcon'
+import { DEFAULT_EXERCISES, MUSCLE_GROUPS } from './exerciseLibrary'
 
 const REST_PRESETS = [0, 30, 60, 90, 120, 180]
 const WEEK_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-
-const EXERCISE_TYPES = [
-  { id: 'weight_reps', label: 'Weight + Reps', desc: 'Bench, squat, rows...' },
-  { id: 'bw_reps', label: 'Bodyweight ± kg', desc: 'Dips, pullups, chin-ups...' },
-  { id: 'reps_only', label: 'Reps only', desc: 'Pushups, situps...' },
-  { id: 'time_only', label: 'Time only', desc: 'Plank, dead hang...' },
-  { id: 'distance_time', label: 'Distance + Time', desc: 'Running, rowing, cycling...' },
-]
-
-function TypeIcon({ type, size = 'w-4 h-4' }) {
-  switch (type) {
-    case 'weight_reps':
-      return <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className={`${size} stroke-[#7B7BFF]`}><path d="M6.5 6.5v11M17.5 6.5v11M6.5 12h11M4 8v8M20 8v8M2 10v4M22 10v4"/></svg>
-    case 'bw_reps':
-      return <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${size} stroke-[#7B7BFF]`}><circle cx="12" cy="5" r="2.5"/><path d="M12 7.5v5M9 20l1.5-7.5h3L15 20"/><path d="M8 12h8"/></svg>
-    case 'reps_only':
-      return <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className={`${size} stroke-[#7B7BFF]`}><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-    case 'time_only':
-      return <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className={`${size} stroke-[#7B7BFF]`}><circle cx="12" cy="13" r="9"/><polyline points="12 9 12 13 15 14.5"/><path d="M12 4V2M8.5 4.5L7.5 3M15.5 4.5l1-1.5"/></svg>
-    case 'distance_time':
-      return <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${size} stroke-[#7B7BFF]`}><path d="M3 19h18"/><path d="M5 19c0-3 2-5 4-7l3-5 3 5c2 2 4 4 4 7"/></svg>
-    default: return null
-  }
-}
 
 function PlayIcon({ className = 'w-3.5 h-3.5' }) {
   return <svg viewBox="0 0 24 24" className={`${className} fill-current`}><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -76,8 +56,10 @@ function App() {
   const [unitWeight, setUnitWeight] = useState(() => localStorage.getItem('unitWeight') || 'kg')
   const [unitDistance, setUnitDistance] = useState(() => localStorage.getItem('unitDistance') || 'km')
   const [unitDecimal, setUnitDecimal] = useState(() => localStorage.getItem('unitDecimal') || '.')
-  const [name, setName] = useState('')
-  const [showTypePicker, setShowTypePicker] = useState(false)
+  const [showAddExercise, setShowAddExercise] = useState(false)
+  const [showCreateExercise, setShowCreateExercise] = useState(false)
+  const [editingCustomExercise, setEditingCustomExercise] = useState(null)
+  const [customExercises, setCustomExercises] = useState(() => { const s = localStorage.getItem('customExercises'); return s ? JSON.parse(s) : [] })
   const [activeRest, setActiveRest] = useState(null)
   const [restTime, setRestTime] = useState(0)
   const [restDuration, setRestDuration] = useState(90)
@@ -106,6 +88,7 @@ function App() {
   useEffect(() => { localStorage.setItem('unitWeight', unitWeight) }, [unitWeight])
   useEffect(() => { localStorage.setItem('unitDistance', unitDistance) }, [unitDistance])
   useEffect(() => { localStorage.setItem('unitDecimal', unitDecimal) }, [unitDecimal])
+  useEffect(() => { localStorage.setItem('customExercises', JSON.stringify(customExercises)) }, [customExercises])
 
   useEffect(() => {
     if (exercises.length > 0) {
@@ -155,10 +138,10 @@ function App() {
     const now = Date.now()
     if (type === 'template') {
       setWorkoutName(data.name)
-      setExercises(data.exercises.map(ex => ({ name: ex.name, type: ex.type || 'weight_reps', sets: ex.sets.map(s => ({ ...s, done: false })), restOverride: ex.restOverride !== undefined ? ex.restOverride : null, note: ex.note || '' })))
+      setExercises(data.exercises.map(ex => ({ name: ex.name, type: ex.type || 'weight_reps', sets: ex.sets.map(s => ({ ...s, done: false })), restOverride: ex.restOverride !== undefined ? ex.restOverride : null, note: ex.note || '', muscle: ex.muscle, equipment: ex.equipment, movement: ex.movement })))
     } else if (type === 'last') {
       setWorkoutName(data.name || data.date)
-      setExercises(data.exercises.map(ex => ({ name: ex.name, type: ex.type || 'weight_reps', sets: ex.sets.map(s => ({ ...s, done: false })), restOverride: ex.restOverride !== undefined ? ex.restOverride : null, note: ex.note || '' })))
+      setExercises(data.exercises.map(ex => ({ name: ex.name, type: ex.type || 'weight_reps', sets: ex.sets.map(s => ({ ...s, done: false })), restOverride: ex.restOverride !== undefined ? ex.restOverride : null, note: ex.note || '', muscle: ex.muscle, equipment: ex.equipment, movement: ex.movement })))
     } else if (type === 'empty') {
       setWorkoutName(data.name)
       setExercises([])
@@ -284,9 +267,43 @@ function App() {
     return result
   }
 
+  // --- Exercise Library ---
+  const allLibraryExercises = [...DEFAULT_EXERCISES, ...customExercises.map(e => ({ ...e, isCustom: true }))]
+
+  function getExerciseFromLibrary(eName) {
+    return allLibraryExercises.find(e => e.name === eName) || null
+  }
+
+  function addExercisesFromLibrary(exList) {
+    const newExs = exList.map(ex => ({
+      name: ex.name, type: ex.type || 'weight_reps', sets: [], restOverride: null, note: '',
+      muscle: ex.muscle, equipment: ex.equipment, movement: ex.movement
+    }))
+    setExercises([...exercises, ...newExs])
+    setShowAddExercise(false)
+  }
+
+  function saveCustomExercise(ex) {
+    if (editingCustomExercise) {
+      setCustomExercises(prev => prev.map(e => e.name === editingCustomExercise.name ? ex : e))
+      // Update any active exercises with the old name
+      if (editingCustomExercise.name !== ex.name) {
+        setExercises(prev => prev.map(e => e.name === editingCustomExercise.name ? { ...e, name: ex.name, type: ex.type, muscle: ex.muscle, equipment: ex.equipment, movement: ex.movement } : e))
+      }
+    } else {
+      setCustomExercises(prev => [...prev, ex])
+    }
+    setEditingCustomExercise(null)
+    setShowCreateExercise(false)
+  }
+
+  function deleteCustomExercise(ex) {
+    setCustomExercises(prev => prev.filter(e => e.name !== ex.name))
+    setEditingCustomExercise(null)
+    setShowCreateExercise(false)
+  }
+
   // --- Exercise management ---
-  function addExercise() { if (name === '') return; setShowTypePicker(true) }
-  function confirmAddExercise(type) { setExercises([...exercises, { name, type, sets: [], restOverride: null, note: '' }]); setName(''); setShowTypePicker(false) }
   function updateExerciseRest(exIndex, value) { const n = [...exercises]; n[exIndex].restOverride = value === '' ? null : Number(value); setExercises(n) }
   function updateExerciseNote(exIndex, value) { const n = [...exercises]; n[exIndex].note = value; setExercises(n) }
 
@@ -456,14 +473,14 @@ function App() {
 
   function saveTemplate() { if (exercises.length === 0) return; setShowSaveModal(true) }
   function confirmSaveTemplate(folderIndex, templateName) {
-    const template = { name: templateName, exercises: exercises.map(ex => ({ name: ex.name, type: ex.type || 'weight_reps', sets: ex.sets.map(s => { const c = { ...s }; delete c.done; delete c.restTime; return c }), restOverride: ex.restOverride, note: ex.note || '' })) }
+    const template = { name: templateName, exercises: exercises.map(ex => ({ name: ex.name, type: ex.type || 'weight_reps', sets: ex.sets.map(s => { const c = { ...s }; delete c.done; delete c.restTime; return c }), restOverride: ex.restOverride, note: ex.note || '', muscle: ex.muscle, equipment: ex.equipment, movement: ex.movement })) }
     const nf = [...folders]; nf[folderIndex].templates.push(template); setFolders(nf); setShowSaveModal(false)
     confirmFinish(false)
   }
 
   function editTemplate(fi, ti) {
     const t = folders[fi].templates[ti]
-    setExercises(t.exercises.map(ex => ({ name: ex.name, type: ex.type || 'weight_reps', sets: ex.sets.map(s => ({ ...s, done: false })), restOverride: ex.restOverride !== undefined ? ex.restOverride : null, note: ex.note || '' })))
+    setExercises(t.exercises.map(ex => ({ name: ex.name, type: ex.type || 'weight_reps', sets: ex.sets.map(s => ({ ...s, done: false })), restOverride: ex.restOverride !== undefined ? ex.restOverride : null, note: ex.note || '', muscle: ex.muscle, equipment: ex.equipment, movement: ex.movement })))
     setEditingTemplate({ folderIndex: fi, templateIndex: ti }); setWorkoutActive(true); setWorkoutName(t.name)
   }
 
@@ -476,7 +493,8 @@ function App() {
       exercises: exercises.map(ex => ({
         name: ex.name, type: ex.type || 'weight_reps',
         sets: ex.sets.map(s => { const c = { ...s }; delete c.done; delete c.restTime; return c }),
-        restOverride: ex.restOverride, note: ex.note || ''
+        restOverride: ex.restOverride, note: ex.note || '',
+        muscle: ex.muscle, equipment: ex.equipment, movement: ex.movement
       }))
     }
     setFolders(nf); setExercises([]); setEditingTemplate(null); setWorkoutActive(false); setWorkoutName('')
@@ -660,7 +678,7 @@ function App() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex justify-between items-center mb-1.5"><span className="font-bold text-sm truncate">{t.name}</span><span className="text-[11px] text-[#777] shrink-0 ml-2">{t.exercises.length} ex</span></div>
-                                {t.exercises.map((ex, j) => <div key={j} className="flex items-center gap-1.5 ml-0.5 mb-0.5"><TypeIcon type={ex.type || 'weight_reps'} size="w-3 h-3" /><span className="text-[11px] text-[#888]">{ex.name} — {ex.sets.length} sets</span></div>)}
+                                {t.exercises.map((ex, j) => { const lib = getExerciseFromLibrary(ex.name); return <div key={j} className="flex items-center gap-1.5 ml-0.5 mb-0.5">{lib ? <MuscleIcon muscle={lib.muscle} size={10} /> : null}<span className="text-[11px] text-[#888]">{ex.name} — {ex.sets.length} sets</span></div> })}
                               </div>
                             </div>
                             <div className="flex gap-2 mt-2.5">
@@ -715,14 +733,11 @@ function App() {
                   onUpdateExerciseRest={updateExerciseRest} onUpdateExerciseNote={updateExerciseNote}
                   bestSet={getBestSet(ex.name)} previousSets={getPreviousSets(ex.name)}
                   activeRest={activeRest} restTime={restTime} restDuration={restDuration} defaultRest={defaultRest} onSkipRest={skipRest}
-                  bodyweight={bodyweight} TypeIcon={TypeIcon} unitWeight={unitWeight} unitDistance={unitDistance} />
+                  bodyweight={bodyweight} unitWeight={unitWeight} unitDistance={unitDistance}
+                  libraryEntry={getExerciseFromLibrary(ex.name)} />
               ))}
 
-              <div className="flex gap-2 mb-6">
-                <input type="text" placeholder="Exercise name" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addExercise()}
-                  className="flex-1 bg-[#1C1C38] border border-dashed border-[#5BF5A0]/30 rounded-xl px-4 py-3 text-white placeholder-[#3a3a55] outline-none focus:border-[#5BF5A0] transition-colors" />
-                <button onClick={addExercise} className="border border-dashed border-[#5BF5A0]/30 text-[#5BF5A0] rounded-xl px-5 py-3 font-bold text-sm hover:bg-[#5BF5A0]/8 hover:border-[#5BF5A0] transition-colors">+ Add</button>
-              </div>
+              <button onClick={() => setShowAddExercise(true)} className="w-full py-3 mb-6 border border-dashed border-[#5BF5A0]/30 rounded-xl text-[#5BF5A0] text-sm font-semibold hover:bg-[#5BF5A0]/8 hover:border-[#5BF5A0] transition-colors">+ Add exercise</button>
 
               {exercises.length > 0 && !editingTemplate && (
                 <div className="flex flex-col gap-3 mt-4 mb-8">
@@ -730,6 +745,16 @@ function App() {
                 </div>
               )}
             </div>
+          )}
+
+          {/* LIBRARY PAGE */}
+          {page === 'library' && (
+            <ExerciseLibrary
+              allExercises={allLibraryExercises}
+              mode="page"
+              onCreateCustom={() => { setEditingCustomExercise(null); setShowCreateExercise(true) }}
+              onEditExercise={(ex) => { setEditingCustomExercise(ex); setShowCreateExercise(true) }}
+            />
           )}
 
           {/* PROFILE */}
@@ -792,21 +817,25 @@ function App() {
         </div>
 
         {/* MODALS */}
-        {showTypePicker && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end justify-center z-50">
-            <div className="w-full max-w-md bg-[#13132A] rounded-t-3xl p-6 pb-10">
-              <h2 className="text-lg font-bold text-center mb-1">Add "{name}"</h2>
-              <p className="text-xs text-[#777] text-center mb-5">Choose exercise type</p>
-              <div className="flex flex-col gap-2">
-                {EXERCISE_TYPES.map(t => (
-                  <button key={t.id} onClick={() => confirmAddExercise(t.id)} className="flex items-center gap-3 px-4 py-3.5 bg-[#1C1C38] border border-[#2A2A4A] rounded-xl text-left hover:border-[#7B7BFF] transition-colors">
-                    <TypeIcon type={t.id} size="w-5 h-5" /><div><div className="text-sm font-semibold">{t.label}</div><div className="text-[11px] text-[#777]">{t.desc}</div></div>
-                  </button>
-                ))}
-              </div>
-              <button onClick={() => setShowTypePicker(false)} className="w-full py-3 mt-4 text-sm font-semibold text-[#777]">Cancel</button>
-            </div>
-          </div>
+        {/* ADD EXERCISE MODAL */}
+        {showAddExercise && (
+          <ExerciseLibrary
+            allExercises={allLibraryExercises}
+            mode="modal"
+            onAdd={addExercisesFromLibrary}
+            onClose={() => setShowAddExercise(false)}
+            onCreateCustom={() => { setEditingCustomExercise(null); setShowCreateExercise(true) }}
+          />
+        )}
+
+        {/* CREATE / EDIT CUSTOM EXERCISE */}
+        {showCreateExercise && (
+          <CreateExerciseModal
+            editExercise={editingCustomExercise}
+            onSave={saveCustomExercise}
+            onCancel={() => { setShowCreateExercise(false); setEditingCustomExercise(null) }}
+            onDelete={editingCustomExercise ? deleteCustomExercise : null}
+          />
         )}
 
         {showEmptyNameModal && (
@@ -891,9 +920,10 @@ function App() {
         )}
 
         {/* BOTTOM NAV */}
-        <div className="fixed bottom-0 left-0 right-0 bg-[#0D0D1A]/95 backdrop-blur-xl border-t border-[#1a1a30] px-6 py-3 pb-8 flex justify-around max-w-md mx-auto">
+        <div className="fixed bottom-0 left-0 right-0 bg-[#0D0D1A]/95 backdrop-blur-xl border-t border-[#1a1a30] px-4 py-3 pb-8 flex justify-around max-w-md mx-auto">
           <button onClick={() => setPage('progress')} className={`flex flex-col items-center gap-1 ${page === 'progress' ? 'opacity-100' : 'opacity-40'}`}><svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className={`w-5 h-5 ${page === 'progress' ? 'stroke-[#7B7BFF]' : 'stroke-white'}`}><path d="M18 20V10M12 20V4M6 20v-6"/></svg><span className={`text-[10px] font-semibold ${page === 'progress' ? 'text-[#7B7BFF]' : 'text-white'}`}>Progress</span></button>
           <button onClick={() => { setPage('workout'); if (showCompleteScreen) {} }} className={`flex flex-col items-center gap-1 ${page === 'workout' ? 'opacity-100' : 'opacity-40'}`}><svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className={`w-5 h-5 ${page === 'workout' ? 'stroke-[#7B7BFF]' : 'stroke-white'}`}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span className={`text-[10px] font-semibold ${page === 'workout' ? 'text-[#7B7BFF]' : 'text-white'}`}>Workout</span></button>
+          <button onClick={() => setPage('library')} className={`flex flex-col items-center gap-1 ${page === 'library' ? 'opacity-100' : 'opacity-40'}`}><svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`w-5 h-5 ${page === 'library' ? 'stroke-[#7B7BFF]' : 'stroke-white'}`}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span className={`text-[10px] font-semibold ${page === 'library' ? 'text-[#7B7BFF]' : 'text-white'}`}>Library</span></button>
           <button onClick={() => setPage('profile')} className={`flex flex-col items-center gap-1 ${page === 'profile' ? 'opacity-100' : 'opacity-40'}`}><svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className={`w-5 h-5 ${page === 'profile' ? 'stroke-[#7B7BFF]' : 'stroke-white'}`}><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg><span className={`text-[10px] font-semibold ${page === 'profile' ? 'text-[#7B7BFF]' : 'text-white'}`}>Profile</span></button>
         </div>
       </div>

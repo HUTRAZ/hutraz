@@ -1,8 +1,10 @@
 import { useState, useRef } from 'react'
+import MuscleIcon from './MuscleIcon'
+import { MUSCLE_GROUPS } from './exerciseLibrary'
 
 const REST_PRESETS = [0, 30, 60, 90, 120, 180]
 
-function ExerciseCard({ exercise, exIndex, isEditing, exerciseCount, onMoveUp, onMoveDown, onRemoveExercise, onAddSet, onUpdateSet, onDoneSet, onDeleteSet, onUpdateExerciseRest, onUpdateExerciseNote, bestSet, previousSets, activeRest, restTime, restDuration, defaultRest, onSkipRest, bodyweight, TypeIcon, unitWeight, unitDistance }) {
+function ExerciseCard({ exercise, exIndex, isEditing, exerciseCount, onMoveUp, onMoveDown, onRemoveExercise, onAddSet, onUpdateSet, onDoneSet, onDeleteSet, onUpdateExerciseRest, onUpdateExerciseNote, bestSet, previousSets, activeRest, restTime, restDuration, defaultRest, onSkipRest, bodyweight, unitWeight, unitDistance, libraryEntry }) {
   const [showRestPicker, setShowRestPicker] = useState(false)
   const [showNoteInput, setShowNoteInput] = useState(false)
   const [showExerciseMenu, setShowExerciseMenu] = useState(false)
@@ -147,14 +149,19 @@ function ExerciseCard({ exercise, exIndex, isEditing, exerciseCount, onMoveUp, o
       <div className="flex justify-between items-start">
         <div className="flex-1 min-w-0">
           <button onClick={() => !isEditing && setShowExerciseMenu(!showExerciseMenu)} className="flex items-center gap-2 text-left">
-            <TypeIcon type={type} size="w-4 h-4" />
-            <span className="text-lg font-bold tracking-tight">{exercise.name}</span>
-            {!isEditing && <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="w-3 h-3 stroke-[#555] shrink-0"><polyline points="6 9 12 15 18 9"/></svg>}
+            {libraryEntry ? <MuscleIcon muscle={libraryEntry.muscle} size={14} /> : null}
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[17px] font-bold tracking-tight">{exercise.name}</span>
+                {!isEditing && <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="w-3 h-3 stroke-[#555] shrink-0"><polyline points="6 9 12 15 18 9"/></svg>}
+              </div>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                {libraryEntry && <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-white/5 text-[#888]">{libraryEntry.equipment}</span>}
+                {type === 'bw_reps' && <span className="text-[10px] text-[#777]">BW: {bodyweight} {unitWeight}</span>}
+                {bestSet && type === 'weight_reps' && <span className="text-[10px] text-[#777]">PR: {bestSet.kg}×{bestSet.reps}</span>}
+              </div>
+            </div>
           </button>
-          <div className="flex items-center gap-2 mt-1">
-            {type === 'bw_reps' && <span className="text-[11px] text-[#7a7a9a]">BW: {bodyweight} {unitWeight}</span>}
-            {bestSet && type === 'weight_reps' && <span className="text-[11px] text-[#7a7a9a]">PR: {bestSet.kg}×{bestSet.reps}</span>}
-          </div>
         </div>
         <div className="flex items-center gap-1.5">
           <button onClick={() => setShowNoteInput(!showNoteInput)} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold transition-colors ${exercise.note ? 'bg-[#7B7BFF]/10 text-[#7B7BFF] border border-[#7B7BFF]/20' : 'bg-[#1C1C38] text-[#777] border border-[#2A2A4A]'}`}>
