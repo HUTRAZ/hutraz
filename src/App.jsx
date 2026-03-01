@@ -606,7 +606,7 @@ function App() {
                   <div className="flex flex-wrap gap-1 mb-2">{suggestedNext.template.exercises.map((ex, i) => <span key={i} className="bg-[#1C1C38] rounded-md px-2 py-0.5 text-[11px] text-[#aaa]">{ex.name}</span>)}</div>
                   <div className="flex items-center gap-3 mb-3 text-[11px] text-[#777]"><span>{suggestedNext.template.exercises.reduce((s, ex) => s + ex.sets.length, 0)} sets</span><span>{suggestedNext.folderName}</span></div>
                   <button onClick={() => tryStart('template', suggestedNext.template)} className="flex items-center justify-center gap-2 w-full py-2 mt-2 border-[1.5px] border-[#7B7BFF] rounded-xl text-xs font-bold text-[#7B7BFF] hover:bg-[#7B7BFF]/8 transition-colors"><PlayIcon className="w-3 h-3" /> Start</button>
-                </>) : <div className="text-xs text-[#666] italic py-2">{isNew ? disabledText : 'Will show when you start using templates'}</div>}
+                </>) : <div className="text-xs text-[#666] italic py-2">Will show when you start using templates</div>}
               </div>
 
               <div className="text-[11px] font-bold text-[#777] uppercase tracking-wider mb-2">Start fresh</div>
@@ -960,7 +960,7 @@ function WorkoutCompleteScreen({ data, weekDays, weekStreak, onDone, formatDurat
             })()}
           </div>
         </>) : (
-          <div className="text-xs text-[#555] italic">{templateName ? `Shown after ${templateName} has been used twice` : 'Use templates to track progression'}</div>
+          <div className="text-xs text-[#666] italic">{templateName ? `Shown after ${templateName} has been used twice` : 'Will show when you start using templates'}</div>
         )}
       </div>
 
