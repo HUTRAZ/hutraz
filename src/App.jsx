@@ -73,6 +73,9 @@ function App() {
   const [defaultRest, setDefaultRest] = useState(() => { const s = localStorage.getItem('defaultRest'); return s ? Number(s) : 90 })
   const [bodyweight, setBodyweight] = useState(() => { const s = localStorage.getItem('bodyweight'); return s ? Number(s) : 80 })
   const [weekStart, setWeekStart] = useState(() => { const s = localStorage.getItem('weekStart'); return s ? Number(s) : 0 }) // 0=Monday
+  const [unitWeight, setUnitWeight] = useState(() => localStorage.getItem('unitWeight') || 'kg')
+  const [unitDistance, setUnitDistance] = useState(() => localStorage.getItem('unitDistance') || 'km')
+  const [unitDecimal, setUnitDecimal] = useState(() => localStorage.getItem('unitDecimal') || '.')
   const [name, setName] = useState('')
   const [showTypePicker, setShowTypePicker] = useState(false)
   const [activeRest, setActiveRest] = useState(null)
@@ -100,6 +103,9 @@ function App() {
   useEffect(() => { localStorage.setItem('defaultRest', String(defaultRest)) }, [defaultRest])
   useEffect(() => { localStorage.setItem('bodyweight', String(bodyweight)) }, [bodyweight])
   useEffect(() => { localStorage.setItem('weekStart', String(weekStart)) }, [weekStart])
+  useEffect(() => { localStorage.setItem('unitWeight', unitWeight) }, [unitWeight])
+  useEffect(() => { localStorage.setItem('unitDistance', unitDistance) }, [unitDistance])
+  useEffect(() => { localStorage.setItem('unitDecimal', unitDecimal) }, [unitDecimal])
 
   useEffect(() => {
     if (exercises.length > 0) {
@@ -194,7 +200,7 @@ function App() {
   function getPRValue(set, type) {
     switch (type) {
       case 'weight_reps': { const kg = Number(set.kg||0); const r = Number(set.reps||0); return kg > 0 && r > 0 ? kg * r : null }
-      case 'bw_reps': { const r = Number(set.reps||0); return r > 0 ? (bodyweight + Number(set.kg||0)) * r : null }
+      case 'bw_reps': { const r = Number(set.reps||0); const sign = (set.bwSign || '+') === '+' ? 1 : -1; return r > 0 ? (bodyweight + sign * Number(set.kg||0)) * r : null }
       case 'reps_only': { const r = Number(set.reps||0); return r > 0 ? r : null }
       case 'time_only': { const t = parseTimeToSeconds(set.time); return t > 0 ? t : null }
       case 'distance_time': { const d = Number(set.distance||0); return d > 0 ? d : null }
@@ -204,11 +210,11 @@ function App() {
 
   function getPRDisplay(set, type) {
     switch (type) {
-      case 'weight_reps': return `${set.kg} kg × ${set.reps}`
-      case 'bw_reps': return `${Number(set.kg||0) > 0 ? '+' : ''}${set.kg||0} kg × ${set.reps}`
+      case 'weight_reps': return `${set.kg} ${unitWeight} × ${set.reps}`
+      case 'bw_reps': { const sign = (set.bwSign || '+') === '+' ? '+' : '−'; return `${sign}${set.kg||0} ${unitWeight} × ${set.reps}` }
       case 'reps_only': return `${set.reps} reps`
       case 'time_only': return set.time
-      case 'distance_time': return `${set.distance} km`
+      case 'distance_time': return `${set.distance} ${unitDistance}`
       default: return ''
     }
   }
@@ -287,7 +293,7 @@ function App() {
   function emptySetForType(type) {
     switch (type) {
       case 'weight_reps': return { kg: '', reps: '', done: false }
-      case 'bw_reps': return { kg: '', reps: '', done: false }
+      case 'bw_reps': return { kg: '', reps: '', bwSign: '+', done: false }
       case 'reps_only': return { reps: '', done: false }
       case 'time_only': return { time: '', done: false }
       case 'distance_time': return { distance: '', time: '', done: false }
@@ -298,7 +304,7 @@ function App() {
   function copySet(set, type) {
     switch (type) {
       case 'weight_reps': return { kg: set.kg, reps: set.reps, done: false }
-      case 'bw_reps': return { kg: set.kg, reps: set.reps, done: false }
+      case 'bw_reps': return { kg: set.kg, reps: set.reps, bwSign: set.bwSign || '+', done: false }
       case 'reps_only': return { reps: set.reps, done: false }
       case 'time_only': return { time: set.time, done: false }
       case 'distance_time': return { distance: set.distance, time: set.time, done: false }
@@ -501,7 +507,7 @@ function App() {
   function addFolder() { const nf = [...folders, { name: 'New Folder', open: true, templates: [] }]; setFolders(nf); setEditingFolder(nf.length - 1); setEditingFolderName('New Folder') }
   function toggleFolder(i) { const nf = [...folders]; nf[i].open = !nf[i].open; setFolders(nf) }
   function startEditFolder(i) { setEditingFolder(i); setEditingFolderName(folders[i].name) }
-  function confirmEditFolder() { if (editingFolder === null) return; const nf = [...folders]; nf[editingFolder].name = editingFolderName || 'Untitled'; setFolders(nf); setEditingFolder(null) }
+  function confirmEditFolder() { if (editingFolder === null) return; const nf = [...folders]; nf[editingFolder].name = editingFolderName || 'Untitled'; nf[editingFolder].open = true; setFolders(nf); setEditingFolder(null) }
   function requestDeleteFolder(i) { setDeletingFolder(i) }
   function confirmDeleteFolder() { if (deletingFolder === null) return; const nf = [...folders]; const r = nf.filter((_, i) => i !== deletingFolder); r[0].templates.push(...nf[deletingFolder].templates); setFolders(r); setDeletingFolder(null) }
   function moveFolderUp(i) { if (i === 0) return; const f = [...folders]; [f[i-1], f[i]] = [f[i], f[i-1]]; setFolders(f) }
@@ -554,8 +560,8 @@ function App() {
               <h1 className="text-2xl font-bold tracking-tight mb-6">Progress</h1>
               <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-5 mb-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div><div className="text-2xl font-bold">{history.length}</div><div className="text-xs text-[#555]">Workouts</div></div>
-                  <div><div className="text-2xl font-bold">{history.reduce((sum, w) => sum + w.exercises.reduce((s, ex) => s + ex.sets.length, 0), 0)}</div><div className="text-xs text-[#555]">Sets logged</div></div>
+                  <div><div className="text-2xl font-bold">{history.length}</div><div className="text-xs text-[#777]">Workouts</div></div>
+                  <div><div className="text-2xl font-bold">{history.reduce((sum, w) => sum + w.exercises.reduce((s, ex) => s + ex.sets.length, 0), 0)}</div><div className="text-xs text-[#777]">Sets logged</div></div>
                 </div>
               </div>
               {history.length > 0 ? (
@@ -563,7 +569,7 @@ function App() {
                   <h3 className="text-sm font-semibold text-[#7B7BFF] uppercase tracking-wide mb-3">Recent workouts</h3>
                   {history.slice(0, 10).map((w, i) => (
                     <div key={i} className="bg-[#13132A] border border-[#232340] rounded-xl p-4 mb-3">
-                      <div className="flex justify-between items-center mb-2"><span className="text-sm font-bold">{w.name || w.date}</span><span className="text-xs text-[#555]">{relativeTime(w.date)}</span></div>
+                      <div className="flex justify-between items-center mb-2"><span className="text-sm font-bold">{w.name || w.date}</span><span className="text-xs text-[#777]">{relativeTime(w.date)}</span></div>
                       <div className="flex items-center gap-3 mb-2 text-[11px] text-[#777]">{w.duration && <span>{formatDuration(w.duration)}</span>}<span>{w.exercises.reduce((s, ex) => s + ex.sets.length, 0)} sets</span></div>
                       {w.exercises.map((ex, j) => <div key={j} className="text-xs text-[#666] ml-1">{ex.name} — {ex.sets.length} sets</div>)}
                     </div>
@@ -572,7 +578,7 @@ function App() {
               ) : (
                 <div className="text-center py-12">
                   <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="w-12 h-12 stroke-[#2A2A4A] mx-auto mb-4"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
-                  <div className="text-[#555] text-sm">No workouts yet</div>
+                  <div className="text-[#777] text-sm">No workouts yet</div>
                 </div>
               )}
             </div>
@@ -580,7 +586,7 @@ function App() {
 
           {/* WORKOUT COMPLETE SCREEN */}
           {page === 'workout' && showCompleteScreen && completedWorkoutData && (
-            <WorkoutCompleteScreen data={completedWorkoutData} weekDays={getWeekDays()} weekStreak={getWeekStreak()} onDone={dismissCompleteScreen} formatDuration={formatDuration} />
+            <WorkoutCompleteScreen data={completedWorkoutData} weekDays={getWeekDays()} weekStreak={getWeekStreak()} onDone={dismissCompleteScreen} formatDuration={formatDuration} unitWeight={unitWeight} />
           )}
 
           {/* WORKOUT START SCREEN */}
@@ -596,7 +602,7 @@ function App() {
                   <div className="flex flex-wrap gap-1 mb-2">{lastWorkout.exercises.map((ex, i) => <span key={i} className="bg-[#1C1C38] rounded-md px-2 py-0.5 text-[11px] text-[#aaa]">{ex.name}</span>)}</div>
                   <div className="flex items-center gap-3 mb-3 text-[11px] text-[#777]">{lastWorkout.duration && <span>{formatDuration(lastWorkout.duration)}</span>}<span>{lastWorkout.exercises.reduce((s, ex) => s + ex.sets.length, 0)} sets</span><span>{lastWorkout.exercises.length} exercises</span></div>
                   <button onClick={() => tryStart('last', lastWorkout)} className="flex items-center justify-center gap-2 w-full py-2 mt-2 border-[1.5px] border-[#7B7BFF] rounded-xl text-xs font-bold text-[#7B7BFF] hover:bg-[#7B7BFF]/8 transition-colors"><PlayIcon className="w-3 h-3" /> Start</button>
-                </>) : <div className="text-xs text-[#444] italic py-2">{disabledText}</div>}
+                </>) : <div className="text-xs text-[#666] italic py-2">{disabledText}</div>}
               </div>
 
               <div className="text-[11px] font-bold text-[#777] uppercase tracking-wider mb-2">Suggested next</div>
@@ -709,7 +715,7 @@ function App() {
                   onUpdateExerciseRest={updateExerciseRest} onUpdateExerciseNote={updateExerciseNote}
                   bestSet={getBestSet(ex.name)} previousSets={getPreviousSets(ex.name)}
                   activeRest={activeRest} restTime={restTime} restDuration={restDuration} defaultRest={defaultRest} onSkipRest={skipRest}
-                  bodyweight={bodyweight} TypeIcon={TypeIcon} />
+                  bodyweight={bodyweight} TypeIcon={TypeIcon} unitWeight={unitWeight} unitDistance={unitDistance} />
               ))}
 
               <div className="flex gap-2 mb-6">
@@ -734,15 +740,36 @@ function App() {
                 <h3 className="text-sm font-semibold text-[#7B7BFF] uppercase tracking-wide mb-4">Settings</h3>
                 <div className="mb-5">
                   <div className="text-sm font-semibold mb-1">Bodyweight</div>
-                  <div className="text-xs text-[#555] mb-3">Used for volume calculation on bodyweight exercises</div>
+                  <div className="text-xs text-[#777] mb-3">Used for volume calculation on bodyweight exercises</div>
                   <div className="flex items-center gap-3">
                     <input type="number" inputMode="decimal" value={bodyweight || ''} onChange={(e) => setBodyweight(e.target.value === '' ? '' : Number(e.target.value))} onBlur={() => { if (bodyweight === '' || bodyweight === 0) setBodyweight(0) }} className="w-24 bg-[#1C1C38] border border-[#2A2A4A] rounded-xl px-3 py-2 text-center text-sm font-bold text-white outline-none focus:border-[#7B7BFF] transition-colors" />
-                    <span className="text-sm text-[#555]">kg</span>
+                    <span className="text-sm text-[#777]">{unitWeight}</span>
+                  </div>
+                </div>
+                <div className="mb-5">
+                  <div className="text-sm font-semibold mb-1">Weight unit</div>
+                  <div className="text-xs text-[#777] mb-3">Used across all exercises</div>
+                  <div className="flex gap-2">
+                    {['kg', 'lbs'].map(u => <button key={u} onClick={() => setUnitWeight(u)} className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${unitWeight === u ? 'bg-[#7B7BFF] text-white' : 'bg-[#1C1C38] border border-[#2A2A4A] text-[#888] hover:border-[#7B7BFF]'}`}>{u}</button>)}
+                  </div>
+                </div>
+                <div className="mb-5">
+                  <div className="text-sm font-semibold mb-1">Distance unit</div>
+                  <div className="text-xs text-[#777] mb-3">Used for distance exercises</div>
+                  <div className="flex gap-2">
+                    {['km', 'miles'].map(u => <button key={u} onClick={() => setUnitDistance(u)} className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${unitDistance === u ? 'bg-[#7B7BFF] text-white' : 'bg-[#1C1C38] border border-[#2A2A4A] text-[#888] hover:border-[#7B7BFF]'}`}>{u}</button>)}
+                  </div>
+                </div>
+                <div className="mb-5">
+                  <div className="text-sm font-semibold mb-1">Decimal separator</div>
+                  <div className="text-xs text-[#777] mb-3">How decimals are displayed</div>
+                  <div className="flex gap-2">
+                    {['.', ','].map(u => <button key={u} onClick={() => setUnitDecimal(u)} className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${unitDecimal === u ? 'bg-[#7B7BFF] text-white' : 'bg-[#1C1C38] border border-[#2A2A4A] text-[#888] hover:border-[#7B7BFF]'}`}>{u === '.' ? '1.5' : '1,5'}</button>)}
                   </div>
                 </div>
                 <div className="mb-5">
                   <div className="text-sm font-semibold mb-1">Rest timer</div>
-                  <div className="text-xs text-[#555] mb-3">Default rest duration between sets</div>
+                  <div className="text-xs text-[#777] mb-3">Default rest duration between sets</div>
                   <div className="flex gap-2 flex-wrap">
                     {REST_PRESETS.map(s => <button key={s} onClick={() => setDefaultRest(s)} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${defaultRest === s ? 'bg-[#7B7BFF] text-white' : 'bg-[#1C1C38] border border-[#2A2A4A] text-[#888] hover:border-[#7B7BFF]'}`}>{s === 0 ? 'None' : formatTime(s)}</button>)}
                   </div>
@@ -750,7 +777,7 @@ function App() {
                 </div>
                 <div className="mb-2">
                   <div className="text-sm font-semibold mb-1">Week starts on</div>
-                  <div className="text-xs text-[#555] mb-3">Used for weekly streak tracking</div>
+                  <div className="text-xs text-[#777] mb-3">Used for weekly streak tracking</div>
                   <div className="flex gap-2 flex-wrap">
                     {WEEK_DAYS.map((d, i) => <button key={i} onClick={() => setWeekStart(i)} className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${weekStart === i ? 'bg-[#7B7BFF] text-white' : 'bg-[#1C1C38] border border-[#2A2A4A] text-[#888] hover:border-[#7B7BFF]'}`}>{d.slice(0,3)}</button>)}
                   </div>
@@ -758,7 +785,7 @@ function App() {
               </div>
               <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-5">
                 <h3 className="text-sm font-semibold text-[#7B7BFF] uppercase tracking-wide mb-4">About</h3>
-                <div className="text-xs text-[#555]"><div className="mb-1">HUTRAZ v1.0</div><div>Simple tracking. Real progress.</div></div>
+                <div className="text-xs text-[#777]"><div className="mb-1">HUTRAZ v1.0</div><div>Simple tracking. Real progress.</div></div>
               </div>
             </div>
           )}
@@ -769,7 +796,7 @@ function App() {
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end justify-center z-50">
             <div className="w-full max-w-md bg-[#13132A] rounded-t-3xl p-6 pb-10">
               <h2 className="text-lg font-bold text-center mb-1">Add "{name}"</h2>
-              <p className="text-xs text-[#555] text-center mb-5">Choose exercise type</p>
+              <p className="text-xs text-[#777] text-center mb-5">Choose exercise type</p>
               <div className="flex flex-col gap-2">
                 {EXERCISE_TYPES.map(t => (
                   <button key={t.id} onClick={() => confirmAddExercise(t.id)} className="flex items-center gap-3 px-4 py-3.5 bg-[#1C1C38] border border-[#2A2A4A] rounded-xl text-left hover:border-[#7B7BFF] transition-colors">
@@ -777,7 +804,7 @@ function App() {
                   </button>
                 ))}
               </div>
-              <button onClick={() => setShowTypePicker(false)} className="w-full py-3 mt-4 text-sm font-semibold text-[#555]">Cancel</button>
+              <button onClick={() => setShowTypePicker(false)} className="w-full py-3 mt-4 text-sm font-semibold text-[#777]">Cancel</button>
             </div>
           </div>
         )}
@@ -788,7 +815,7 @@ function App() {
               <h2 className="text-lg font-bold text-center mb-5">Name your workout</h2>
               <input type="text" placeholder="e.g. Push Day, Upper Body..." value={emptyWorkoutName} onChange={(e) => setEmptyWorkoutName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && confirmEmptyStart()} autoFocus className="w-full bg-[#1C1C38] border border-[#2A2A4A] rounded-xl px-4 py-3 text-white placeholder-[#3a3a55] outline-none focus:border-[#7B7BFF] transition-colors mb-4" />
               <button onClick={confirmEmptyStart} className={`w-full py-4 rounded-2xl font-bold text-sm mb-3 transition-all ${emptyWorkoutName ? 'bg-gradient-to-r from-[#7B7BFF] to-[#6060DD] shadow-lg shadow-[#7B7BFF]/25' : 'bg-[#1C1C38] text-[#555]'}`} disabled={!emptyWorkoutName}>Start workout</button>
-              <button onClick={() => setShowEmptyNameModal(false)} className="w-full py-3 text-sm font-semibold text-[#555]">Cancel</button>
+              <button onClick={() => setShowEmptyNameModal(false)} className="w-full py-3 text-sm font-semibold text-[#777]">Cancel</button>
             </div>
           </div>
         )}
@@ -818,7 +845,7 @@ function App() {
               <h2 className="text-base font-bold text-center mb-2">Active workout</h2>
               <p className="text-xs text-[#888] text-center mb-5">You have an active workout with <span className="font-bold text-white">{exercises.length} exercise{exercises.length !== 1 ? 's' : ''}</span>. Starting a new one will discard it.</p>
               <button onClick={confirmDiscardAndStart} className="w-full py-3 bg-red-500 rounded-xl font-bold text-sm mb-2">Discard & start new</button>
-              <button onClick={() => setPendingStart(null)} className="w-full py-3 text-sm font-semibold text-[#555]">Keep current workout</button>
+              <button onClick={() => setPendingStart(null)} className="w-full py-3 text-sm font-semibold text-[#777]">Keep current workout</button>
             </div>
           </div>
         )}
@@ -829,9 +856,9 @@ function App() {
               <div className="flex justify-center mb-4"><div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="w-6 h-6 stroke-red-400"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div></div>
               <h2 className="text-base font-bold text-center mb-2">Delete "{folders[deletingFolder]?.name}"?</h2>
               <p className="text-xs text-[#888] text-center mb-1">This folder contains <span className="font-bold text-white">{folders[deletingFolder]?.templates.length} template{folders[deletingFolder]?.templates.length !== 1 ? 's' : ''}</span>.</p>
-              <p className="text-xs text-[#555] text-center mb-5">Templates will be moved to "{folders.find((_, i) => i !== deletingFolder)?.name}".</p>
+              <p className="text-xs text-[#777] text-center mb-5">Templates will be moved to "{folders.find((_, i) => i !== deletingFolder)?.name}".</p>
               <button onClick={confirmDeleteFolder} className="w-full py-3 bg-red-500 rounded-xl font-bold text-sm mb-2">Delete folder</button>
-              <button onClick={() => setDeletingFolder(null)} className="w-full py-3 text-sm font-semibold text-[#555]">Cancel</button>
+              <button onClick={() => setDeletingFolder(null)} className="w-full py-3 text-sm font-semibold text-[#777]">Cancel</button>
             </div>
           </div>
         )}
@@ -843,7 +870,7 @@ function App() {
               <h2 className="text-base font-bold text-center mb-2">Delete template?</h2>
               <p className="text-xs text-[#888] text-center mb-5">"{folders[deletingTemplate.fi]?.templates[deletingTemplate.ti]?.name}" will be permanently deleted.</p>
               <button onClick={confirmDeleteTemplate} className="w-full py-3 bg-red-500 rounded-xl font-bold text-sm mb-2">Delete template</button>
-              <button onClick={() => setDeletingTemplate(null)} className="w-full py-3 text-sm font-semibold text-[#555]">Cancel</button>
+              <button onClick={() => setDeletingTemplate(null)} className="w-full py-3 text-sm font-semibold text-[#777]">Cancel</button>
             </div>
           </div>
         )}
@@ -858,7 +885,7 @@ function App() {
               <h2 className="text-base font-bold text-center mb-2">Incomplete sets</h2>
               <p className="text-xs text-[#888] text-center mb-5">You completed <span className="font-bold text-white">{incompleteSetsWarning.done} of {incompleteSetsWarning.total}</span> sets. Incomplete sets won't be saved.</p>
               <button onClick={() => { setIncompleteSetsWarning(null); setShowFinishModal(true) }} className="w-full py-3 bg-gradient-to-r from-[#7B7BFF] to-[#6060DD] rounded-xl font-bold text-sm mb-2 shadow-lg shadow-[#7B7BFF]/25">Finish anyway</button>
-              <button onClick={() => setIncompleteSetsWarning(null)} className="w-full py-3 text-sm font-semibold text-[#555]">Continue workout</button>
+              <button onClick={() => setIncompleteSetsWarning(null)} className="w-full py-3 text-sm font-semibold text-[#777]">Continue workout</button>
             </div>
           </div>
         )}
@@ -874,7 +901,7 @@ function App() {
   )
 }
 
-function WorkoutCompleteScreen({ data, weekDays, weekStreak, onDone, formatDuration }) {
+function WorkoutCompleteScreen({ data, weekDays, weekStreak, onDone, formatDuration, unitWeight }) {
   const { name, templateName, duration, setCount, volume, newPRs, progression, templateUseCount, suggestedNext } = data
   const weekWorkouts = weekStreak.filter(d => d.worked || d.isToday).length
 
@@ -901,7 +928,7 @@ function WorkoutCompleteScreen({ data, weekDays, weekStreak, onDone, formatDurat
         </div>
         <div className="bg-[#13132A] border border-[#232340] rounded-xl p-3.5 text-center">
           <div className="text-[22px] font-extrabold">{volume.toLocaleString()}</div>
-          <div className="text-[11px] font-bold text-[#777] uppercase tracking-wider mt-1">kg Volume</div>
+          <div className="text-[11px] font-bold text-[#777] uppercase tracking-wider mt-1">{unitWeight} Volume</div>
         </div>
       </div>
 
@@ -917,7 +944,7 @@ function WorkoutCompleteScreen({ data, weekDays, weekStreak, onDone, formatDurat
             <span className="text-[13px] font-extrabold text-[#5BF5A0]">{pr.display}</span>
           </div>
         )) : (
-          <div className="text-xs text-[#555] italic">No new records today — keep pushing!</div>
+          <div className="text-xs text-[#777] italic">No new records today — keep pushing!</div>
         )}
       </div>
 
@@ -934,9 +961,9 @@ function WorkoutCompleteScreen({ data, weekDays, weekStreak, onDone, formatDurat
             <span className="text-xs text-[#aaa]">Volume</span>
             {(() => {
               const diff = progression.curVolume - progression.prevVolume
-              if (diff > 0) return <span className="flex items-center gap-1 text-xs font-bold text-[#5BF5A0]"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-3 h-3 stroke-[#5BF5A0]"><polyline points="18 15 12 9 6 15"/></svg>+{diff.toLocaleString()} kg</span>
-              if (diff < 0) return <span className="flex items-center gap-1 text-xs font-bold text-[#ff6b6b]"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-3 h-3 stroke-[#ff6b6b]"><polyline points="6 9 12 15 18 9"/></svg>{diff.toLocaleString()} kg</span>
-              return <span className="text-xs font-bold text-[#555]">Same ({progression.curVolume.toLocaleString()} kg)</span>
+              if (diff > 0) return <span className="flex items-center gap-1 text-xs font-bold text-[#5BF5A0]"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-3 h-3 stroke-[#5BF5A0]"><polyline points="18 15 12 9 6 15"/></svg>+{diff.toLocaleString()} {unitWeight}</span>
+              if (diff < 0) return <span className="flex items-center gap-1 text-xs font-bold text-[#ff6b6b]"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-3 h-3 stroke-[#ff6b6b]"><polyline points="6 9 12 15 18 9"/></svg>{diff.toLocaleString()} {unitWeight}</span>
+              return <span className="text-xs font-bold text-[#555]">Same ({progression.curVolume.toLocaleString()} {unitWeight})</span>
             })()}
           </div>
           {progression.prevDuration > 0 && (
@@ -1015,11 +1042,11 @@ function SaveTemplateModal({ folders, onSave, onCancel }) {
       <div className="w-full max-w-md bg-[#13132A] rounded-t-3xl p-6 pb-10">
         <h2 className="text-lg font-bold text-center mb-5">Save as template</h2>
         <div className="mb-4">
-          <div className="text-xs text-[#555] font-semibold uppercase tracking-wide mb-2">Template name</div>
+          <div className="text-xs text-[#777] font-semibold uppercase tracking-wide mb-2">Template name</div>
           <input type="text" placeholder="e.g. Push Day A" value={templateName} onChange={(e) => setTemplateName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSave()} autoFocus className="w-full bg-[#1C1C38] border border-[#2A2A4A] rounded-xl px-4 py-3 text-white placeholder-[#3a3a55] outline-none focus:border-[#7B7BFF] transition-colors" />
         </div>
         <div className="mb-5">
-          <div className="text-xs text-[#555] font-semibold uppercase tracking-wide mb-2">Save to folder</div>
+          <div className="text-xs text-[#777] font-semibold uppercase tracking-wide mb-2">Save to folder</div>
           <div className="flex flex-col gap-1.5">
             {folders.map((f, i) => (
               <button key={i} onClick={() => setSelectedFolder(i)} className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-left transition-all ${selectedFolder === i ? 'bg-[#7B7BFF]/15 border border-[#7B7BFF]/40 text-white' : 'bg-[#1C1C38] border border-[#2A2A4A] text-[#888]'}`}>
@@ -1030,7 +1057,7 @@ function SaveTemplateModal({ folders, onSave, onCancel }) {
           </div>
         </div>
         <button onClick={handleSave} className={`w-full py-4 rounded-2xl font-bold text-sm mb-3 transition-all ${templateName ? 'bg-gradient-to-r from-[#7B7BFF] to-[#6060DD] shadow-lg shadow-[#7B7BFF]/25' : 'bg-[#1C1C38] text-[#555]'}`} disabled={!templateName}>Save template</button>
-        <button onClick={onCancel} className="w-full py-3 text-sm font-semibold text-[#555]">Cancel</button>
+        <button onClick={onCancel} className="w-full py-3 text-sm font-semibold text-[#777]">Cancel</button>
       </div>
     </div>
   )
