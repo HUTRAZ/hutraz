@@ -5,6 +5,7 @@ const REST_PRESETS = [0, 30, 60, 90, 120, 180]
 function ExerciseCard({ exercise, exIndex, isEditing, exerciseCount, onMoveUp, onMoveDown, onRemoveExercise, onAddSet, onUpdateSet, onDoneSet, onDeleteSet, onUpdateExerciseRest, onUpdateExerciseNote, bestSet, previousSets, activeRest, restTime, restDuration, defaultRest, onSkipRest, bodyweight, TypeIcon }) {
   const [showRestPicker, setShowRestPicker] = useState(false)
   const [showNoteInput, setShowNoteInput] = useState(false)
+  const [showExerciseMenu, setShowExerciseMenu] = useState(false)
   const [swipedSet, setSwipedSet] = useState(null)
   const touchStartRef = useRef({ x: 0, y: 0 })
   const touchDeltaRef = useRef(0)
@@ -134,22 +135,38 @@ function ExerciseCard({ exercise, exIndex, isEditing, exerciseCount, onMoveUp, o
 
       <div className="flex justify-between items-start">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2"><TypeIcon type={type} size="w-4 h-4" /><span className="text-lg font-bold tracking-tight">{exercise.name}</span></div>
+          <button onClick={() => !isEditing && setShowExerciseMenu(!showExerciseMenu)} className="flex items-center gap-2 text-left">
+            <TypeIcon type={type} size="w-4 h-4" />
+            <span className="text-lg font-bold tracking-tight">{exercise.name}</span>
+            {!isEditing && <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="w-3 h-3 stroke-[#555] shrink-0"><polyline points="6 9 12 15 18 9"/></svg>}
+          </button>
           <div className="flex items-center gap-2 mt-1">
             {type === 'bw_reps' && <span className="text-[11px] text-[#7a7a9a]">BW: {bodyweight} kg</span>}
             {bestSet && type === 'weight_reps' && <span className="text-[11px] text-[#7a7a9a]">PR: {bestSet.kg}×{bestSet.reps}</span>}
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          <button onClick={() => setShowNoteInput(!showNoteInput)} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold transition-colors ${exercise.note ? 'bg-[#7B7BFF]/10 text-[#7B7BFF] border border-[#7B7BFF]/20' : 'bg-[#1C1C38] text-[#555] border border-[#2A2A4A]'}`}>
+          <button onClick={() => setShowNoteInput(!showNoteInput)} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold transition-colors ${exercise.note ? 'bg-[#7B7BFF]/10 text-[#7B7BFF] border border-[#7B7BFF]/20' : 'bg-[#1C1C38] text-[#777] border border-[#2A2A4A]'}`}>
             <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 stroke-current"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
           </button>
-          <button onClick={() => setShowRestPicker(!showRestPicker)} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold transition-colors ${exercise.restOverride !== null && exercise.restOverride !== undefined ? 'bg-[#5BF5A0]/10 text-[#5BF5A0] border border-[#5BF5A0]/20' : 'bg-[#1C1C38] text-[#555] border border-[#2A2A4A]'}`}>
+          <button onClick={() => setShowRestPicker(!showRestPicker)} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold transition-colors ${exercise.restOverride !== null && exercise.restOverride !== undefined ? 'bg-[#5BF5A0]/10 text-[#5BF5A0] border border-[#5BF5A0]/20' : 'bg-[#1C1C38] text-[#777] border border-[#2A2A4A]'}`}>
             <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="w-3 h-3 stroke-current"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             {currentRest === 0 ? 'None' : formatTime(currentRest)}
           </button>
         </div>
       </div>
+
+      {showExerciseMenu && (
+        <div className="mt-2 bg-[#1C1C38] border border-[#2A2A4A] rounded-xl overflow-hidden">
+          <button onClick={() => { setShowExerciseMenu(false); onRemoveExercise(exIndex) }} className="flex items-center gap-2.5 w-full px-4 py-3 text-left text-sm font-semibold text-red-400 hover:bg-red-500/10 transition-colors">
+            <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="w-4 h-4 stroke-current"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Remove exercise
+          </button>
+          <button onClick={() => setShowExerciseMenu(false)} className="flex items-center gap-2.5 w-full px-4 py-3 text-left text-sm font-semibold text-[#777] hover:bg-white/5 transition-colors border-t border-[#2A2A4A]">
+            Cancel
+          </button>
+        </div>
+      )}
 
       {exercise.note && !showNoteInput && (
         <div className="flex items-center gap-2 mt-2 px-3 py-2 bg-[#1C1C38] rounded-lg border border-[#2A2A4A]">
