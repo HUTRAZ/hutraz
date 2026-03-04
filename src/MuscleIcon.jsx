@@ -1,6 +1,6 @@
 import { MUSCLE_GROUPS } from './exerciseLibrary'
 
-export default function MuscleIcon({ muscle, size = 20, className = '' }) {
+export default function MuscleIcon({ muscle, size = 20, className = '', bare = false }) {
   const mg = MUSCLE_GROUPS[muscle]
   if (!mg) return null
   const color = mg.color
@@ -84,6 +84,8 @@ export default function MuscleIcon({ muscle, size = 20, className = '' }) {
       </svg>
     ),
   }
+
+  if (bare) return icons[muscle] || null
 
   return (
     <div className={className} style={{ width: size + 16, height: size + 16, borderRadius: size > 16 ? 10 : 8, background: mg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

@@ -73,14 +73,14 @@ function ExerciseCard({ exercise, exIndex, isEditing, exerciseCount, onMoveUp, o
   const hasPrevious = previousSets && previousSets.length > 0
 
   function getGridCols() {
-    const prev = hasPrevious ? '50px ' : ''
+    const prev = hasPrevious ? '44px ' : ''
     switch (type) {
-      case 'weight_reps': return `32px ${prev}1fr 1fr 36px`
-      case 'bw_reps': return `32px ${prev}1.2fr 1fr 36px`
-      case 'reps_only': return `32px ${prev}1fr 36px`
-      case 'time_only': return `32px ${prev}1fr 36px`
-      case 'distance_time': return `32px ${prev}1fr 1fr 36px`
-      default: return `32px ${prev}1fr 1fr 36px`
+      case 'weight_reps': return `28px ${prev}1fr 1fr 30px`
+      case 'bw_reps': return `28px ${prev}1.2fr 1fr 30px`
+      case 'reps_only': return `28px ${prev}1fr 30px`
+      case 'time_only': return `28px ${prev}1fr 30px`
+      case 'distance_time': return `28px ${prev}1fr 1fr 30px`
+      default: return `28px ${prev}1fr 1fr 30px`
     }
   }
 
@@ -100,7 +100,7 @@ function ExerciseCard({ exercise, exIndex, isEditing, exerciseCount, onMoveUp, o
   const headers = getHeaders()
   const doneStyle = 'border-[#7B7BFF]/25 bg-[#7B7BFF]/5 text-[#B8B8FF]'
   const editStyle = 'border-[#2A2A4A] text-white placeholder-[#3a3a55] focus:border-[#7B7BFF] focus:shadow-[0_0_0_3px_rgba(123,123,255,0.15)]'
-  const base = 'w-full min-w-0 bg-[#1C1C38] border rounded-xl px-2 py-2 text-center text-sm font-bold outline-none transition-all'
+  const base = 'w-full min-w-0 bg-[#1C1C38] border rounded-lg px-1.5 py-1.5 text-center text-[13px] font-bold outline-none transition-all'
 
   function renderInputs(set, j) {
     switch (type) {
@@ -133,7 +133,7 @@ function ExerciseCard({ exercise, exIndex, isEditing, exerciseCount, onMoveUp, o
   }
 
   return (
-    <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-5 mb-3">
+    <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-3.5 mb-2">
       {isEditing && (
         <div className="flex items-center justify-between mb-3 pb-2 border-b border-[#1a1a30]">
           <div className="flex items-center gap-1">
@@ -152,7 +152,7 @@ function ExerciseCard({ exercise, exIndex, isEditing, exerciseCount, onMoveUp, o
             {libraryEntry ? <div className="mt-0.5"><MuscleIcon muscle={libraryEntry.muscle} size={14} /></div> : null}
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[17px] font-bold tracking-tight">{exercise.name}</span>
+                <span className="text-[15px] font-bold tracking-tight">{exercise.name}</span>
                 {!isEditing && <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="w-3 h-3 stroke-[#555] shrink-0"><polyline points="6 9 12 15 18 9"/></svg>}
               </div>
               <div className="flex items-center gap-1.5 mt-0.5">
@@ -163,12 +163,12 @@ function ExerciseCard({ exercise, exIndex, isEditing, exerciseCount, onMoveUp, o
             </div>
           </button>
         </div>
-        <div className="flex items-center gap-1.5">
-          <button onClick={() => setShowNoteInput(!showNoteInput)} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold transition-colors ${exercise.note ? 'bg-[#7B7BFF]/10 text-[#7B7BFF] border border-[#7B7BFF]/20' : 'bg-[#1C1C38] text-[#777] border border-[#2A2A4A]'}`}>
-            <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 stroke-current"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        <div className="flex items-center gap-1">
+          <button onClick={() => setShowNoteInput(!showNoteInput)} className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold transition-colors ${exercise.note ? 'bg-[#7B7BFF]/10 text-[#7B7BFF] border border-[#7B7BFF]/20' : 'bg-[#1C1C38] text-[#777] border border-[#2A2A4A]'}`}>
+            <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5 stroke-current"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
           </button>
-          <button onClick={() => setShowRestPicker(!showRestPicker)} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold transition-colors ${exercise.restOverride !== null && exercise.restOverride !== undefined ? 'bg-[#5BF5A0]/10 text-[#5BF5A0] border border-[#5BF5A0]/20' : 'bg-[#1C1C38] text-[#777] border border-[#2A2A4A]'}`}>
-            <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="w-3 h-3 stroke-current"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <button onClick={() => setShowRestPicker(!showRestPicker)} className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold transition-colors ${exercise.restOverride !== null && exercise.restOverride !== undefined ? 'bg-[#5BF5A0]/10 text-[#5BF5A0] border border-[#5BF5A0]/20' : 'bg-[#1C1C38] text-[#777] border border-[#2A2A4A]'}`}>
+            <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="w-2.5 h-2.5 stroke-current"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             {currentRest === 0 ? 'None' : formatTime(currentRest)}
           </button>
         </div>
@@ -212,10 +212,10 @@ function ExerciseCard({ exercise, exIndex, isEditing, exerciseCount, onMoveUp, o
         </div>
       )}
 
-      <div className="gap-1.5 mt-4 mb-2" style={{ display: 'grid', ...gridStyle }}>
-        <span className="text-[11px] font-bold text-[#666] uppercase text-center">Set</span>
-        {hasPrevious && <span className="text-[11px] font-bold text-[#666] uppercase text-center">Prev</span>}
-        {headers.map(h => <span key={h} className="text-[11px] font-bold text-[#666] uppercase text-center">{h}</span>)}
+      <div className="gap-1.5 mt-3 mb-1" style={{ display: 'grid', ...gridStyle }}>
+        <span className="text-[9px] font-bold text-[#666] uppercase text-center">Set</span>
+        {hasPrevious && <span className="text-[9px] font-bold text-[#666] uppercase text-center">Prev</span>}
+        {headers.map(h => <span key={h} className="text-[9px] font-bold text-[#666] uppercase text-center">{h}</span>)}
         <span></span>
       </div>
 
@@ -234,16 +234,16 @@ function ExerciseCard({ exercise, exIndex, isEditing, exerciseCount, onMoveUp, o
               </button>
               <div ref={(el) => { rowRefs.current[j] = el }} className="gap-1.5 items-center bg-[#13132A] relative z-10" style={{ display: 'grid', ...gridStyle }}
                 onTouchStart={(e) => { tapOutside(j); handleTouchStart(e, j) }} onTouchMove={(e) => handleTouchMove(e, j)} onTouchEnd={(e) => handleTouchEnd(e, j)}>
-                <span className="text-sm font-bold text-[#888] text-center">{j + 1}</span>
+                <span className="text-xs font-bold text-[#888] text-center">{j + 1}</span>
                 {hasPrevious && (
                   <span className={`text-[11px] text-center font-medium italic ${prevChanged ? 'text-[#7B7BFF] font-bold not-italic' : 'text-[#7a7a9a]'}`}>{formatPrev(prevSet)}</span>
                 )}
                 {renderInputs(set, j)}
                 {set.done ? (
-                  <button onClick={() => onUndoneSet(exIndex, j)} className="w-8 h-8 bg-[#5BF5A0] rounded-lg flex items-center justify-center mx-auto hover:bg-[#5BF5A0]/80 transition-colors active:scale-90"><svg viewBox="0 0 24 24" fill="none" strokeWidth="3" strokeLinecap="round" className="w-4 h-4 stroke-[#0D0D1A]"><polyline points="20 6 9 17 4 12" /></svg></button>
+                  <button onClick={() => onUndoneSet(exIndex, j)} className="w-7 h-7 bg-[#5BF5A0] rounded-md flex items-center justify-center mx-auto hover:bg-[#5BF5A0]/80 transition-colors active:scale-90"><svg viewBox="0 0 24 24" fill="none" strokeWidth="3" strokeLinecap="round" className="w-3.5 h-3.5 stroke-[#0D0D1A]"><polyline points="20 6 9 17 4 12" /></svg></button>
                 ) : (
-                  <button onClick={() => onDoneSet(exIndex, j)} className="w-8 h-8 border-2 border-[#2A2A4A] rounded-lg flex items-center justify-center mx-auto hover:border-[#5BF5A0] transition-colors active:scale-90">
-                    <svg viewBox="0 0 24 24" fill="none" strokeWidth="3" strokeLinecap="round" className="w-4 h-4 stroke-[#555]"><polyline points="20 6 9 17 4 12" /></svg>
+                  <button onClick={() => onDoneSet(exIndex, j)} className="w-7 h-7 border-2 border-[#2A2A4A] rounded-md flex items-center justify-center mx-auto hover:border-[#5BF5A0] transition-colors active:scale-90">
+                    <svg viewBox="0 0 24 24" fill="none" strokeWidth="3" strokeLinecap="round" className="w-3.5 h-3.5 stroke-[#555]"><polyline points="20 6 9 17 4 12" /></svg>
                   </button>
                 )}
               </div>
@@ -268,7 +268,7 @@ function ExerciseCard({ exercise, exIndex, isEditing, exerciseCount, onMoveUp, o
         )
       })}
 
-      <button onClick={() => onAddSet(exIndex)} className="w-full py-3 mt-3 border border-dashed border-[#2A2A4A] rounded-xl text-[#777] text-xs font-semibold hover:border-[#7B7BFF] hover:text-[#7B7BFF] transition-colors">+ Add set</button>
+      <button onClick={() => onAddSet(exIndex)} className="w-full py-2 mt-2 border border-dashed border-[#2A2A4A] rounded-lg text-[#777] text-[11px] font-semibold hover:border-[#7B7BFF] hover:text-[#7B7BFF] transition-colors">+ Add set</button>
     </div>
   )
 }

@@ -16,6 +16,34 @@ function RepliqeLogo({ size = 28 }) {
   return <svg width={size} height={size} viewBox="0 0 100 100" className="shrink-0"><rect x="8" y="5" width="38" height="26" rx="8" fill="#7B7BFF" opacity="0.9"/><rect x="54" y="5" width="38" height="26" rx="8" fill="#7B7BFF" opacity="0.9"/><rect x="8" y="37" width="38" height="26" rx="8" fill="#7B7BFF" opacity="0.7"/><rect x="54" y="37" width="38" height="26" rx="8" fill="#7B7BFF" opacity="0.7"/><rect x="8" y="69" width="38" height="26" rx="8" fill="#7B7BFF" opacity="0.5"/><rect x="54" y="69" width="38" height="26" rx="8" fill="#5BF5A0" opacity="0.9"/></svg>
 }
 
+function MusclePills({ exercises, getExerciseFromLibrary }) {
+  const counts = {}
+  for (const ex of exercises) {
+    const lib = getExerciseFromLibrary(ex.name)
+    const muscle = lib ? lib.muscle : 'other'
+    counts[muscle] = (counts[muscle] || 0) + 1
+  }
+  const order = ['chest', 'back', 'legs', 'shoulders', 'arms', 'core', 'cardio', 'mobility']
+  const sorted = Object.entries(counts).sort((a, b) => {
+    const ia = order.indexOf(a[0]), ib = order.indexOf(b[0])
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
+  })
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {sorted.map(([muscle, count]) => {
+        const mg = MUSCLE_GROUPS[muscle]
+        if (!mg) return <span key={muscle} className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white/5 text-[#888]">Other × {count}</span>
+        return (
+          <span key={muscle} className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md" style={{ background: mg.bg, color: mg.color }}>
+            <MuscleIcon muscle={muscle} size={10} bare />
+            {mg.label} × {count}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
 function relativeTime(dateStr) {
   if (!dateStr) return ''
   const parts = dateStr.split('/')
@@ -616,7 +644,7 @@ function App() {
 
           {/* WORKOUT COMPLETE SCREEN */}
           {page === 'workout' && showCompleteScreen && completedWorkoutData && (
-            <WorkoutCompleteScreen data={completedWorkoutData} weekDays={getWeekDays()} weekStreak={getWeekStreak()} onDone={dismissCompleteScreen} formatDuration={formatDuration} unitWeight={unitWeight} />
+            <WorkoutCompleteScreen data={completedWorkoutData} weekDays={getWeekDays()} weekStreak={getWeekStreak()} onDone={dismissCompleteScreen} formatDuration={formatDuration} unitWeight={unitWeight} getExerciseFromLibrary={getExerciseFromLibrary} />
           )}
 
           {/* WORKOUT START SCREEN */}
@@ -633,8 +661,8 @@ function App() {
               <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-4 mb-4">
                 {suggestedNext ? (<>
                   <div className="flex justify-between items-center mb-2"><span className="text-[15px] font-bold">{suggestedNext.template.name}</span><span className="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide bg-[#5BF5A0]/10 text-[#5BF5A0]">Up next</span></div>
-                  <div className="flex flex-wrap gap-1 mb-2">{suggestedNext.template.exercises.map((ex, i) => <span key={i} className="bg-[#1C1C38] rounded-md px-2 py-0.5 text-[11px] text-[#aaa]">{ex.name}</span>)}</div>
-                  <div className="flex items-center gap-3 mb-3 text-[11px] text-[#777]"><span>{suggestedNext.template.exercises.reduce((s, ex) => s + ex.sets.length, 0)} sets</span><span>{suggestedNext.folderName}</span></div>
+                  <div className="flex flex-wrap gap-1 mb-2"><MusclePills exercises={suggestedNext.template.exercises} getExerciseFromLibrary={getExerciseFromLibrary} /></div>
+                  <div className="flex items-center gap-3 mb-3 text-[11px] text-[#777]"><span>{suggestedNext.template.exercises.length} exercises</span><span>{suggestedNext.template.exercises.reduce((s, ex) => s + ex.sets.length, 0)} sets</span><span>{suggestedNext.folderName}</span></div>
                   <button onClick={() => tryStart('template', suggestedNext.template)} className="flex items-center justify-center gap-2 w-full py-2 mt-2 border-[1.5px] border-[#7B7BFF] rounded-xl text-xs font-bold text-[#7B7BFF] hover:bg-[#7B7BFF]/8 transition-colors"><PlayIcon className="w-3 h-3" /> Start</button>
                 </>) : <div className="text-xs text-[#666] italic py-2">Will show when you start using templates</div>}
               </div>
@@ -683,8 +711,8 @@ function App() {
                                 <button onClick={() => moveTemplateDown(fi, ti)} className={`text-[#444] p-0.5 ${ti >= folder.templates.length-1 && fi >= folders.length-1 ? 'opacity-20' : 'hover:text-[#7B7BFF]'}`} disabled={ti >= folder.templates.length-1 && fi >= folders.length-1}><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-2.5 h-2.5 stroke-current"><polyline points="6 9 12 15 18 9"/></svg></button>
                               </div>
                               <div className="flex-1 min-w-0">
-                                <div className="flex justify-between items-center mb-1.5"><span className="font-bold text-sm truncate">{t.name}</span><span className="text-[11px] text-[#777] shrink-0 ml-2">{t.exercises.length} ex</span></div>
-                                {t.exercises.map((ex, j) => { const lib = getExerciseFromLibrary(ex.name); return <div key={j} className="flex items-center gap-1.5 ml-0.5 mb-0.5">{lib ? <MuscleIcon muscle={lib.muscle} size={10} /> : null}<span className="text-[11px] text-[#888]">{ex.name} — {ex.sets.length} sets</span></div> })}
+                                <div className="flex justify-between items-center mb-1.5"><span className="font-bold text-sm truncate">{t.name}</span><span className="text-[11px] text-[#777] shrink-0 ml-2">{t.exercises.length} ex · {t.exercises.reduce((s, ex) => s + ex.sets.length, 0)} sets</span></div>
+                                <MusclePills exercises={t.exercises} getExerciseFromLibrary={getExerciseFromLibrary} />
                               </div>
                             </div>
                             <div className="flex gap-2 mt-2.5">
@@ -936,7 +964,7 @@ function App() {
   )
 }
 
-function WorkoutCompleteScreen({ data, weekDays, weekStreak, onDone, formatDuration, unitWeight }) {
+function WorkoutCompleteScreen({ data, weekDays, weekStreak, onDone, formatDuration, unitWeight, getExerciseFromLibrary }) {
   const { name, templateName, duration, setCount, volume, newPRs, progression, templateUseCount, suggestedNext } = data
   const weekWorkouts = weekStreak.filter(d => d.worked || d.isToday).length
 
@@ -1055,7 +1083,7 @@ function WorkoutCompleteScreen({ data, weekDays, weekStreak, onDone, formatDurat
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide bg-[#5BF5A0]/10 text-[#5BF5A0]">Up next</span>
           </div>
           <div className="flex flex-wrap gap-1 mt-2">
-            {suggestedNext.template.exercises.map((ex, i) => <span key={i} className="bg-[#1C1C38] rounded-md px-2 py-0.5 text-[11px] text-[#aaa]">{ex.name}</span>)}
+            <MusclePills exercises={suggestedNext.template.exercises} getExerciseFromLibrary={getExerciseFromLibrary} />
           </div>
         </div>
       )}
