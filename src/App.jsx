@@ -793,7 +793,7 @@ function App() {
           {/* PROFILE */}
           {page === 'profile' && (
             <div>
-              <div className="flex items-center gap-3 mb-6"><RepliqeLogo size={28} /><h1 className="text-2xl font-bold tracking-tight">Profile</h1></div>
+              <div className="flex items-center gap-3 mb-6"><RepliqeLogo size={28} /><h1 className="text-2xl font-bold tracking-tight">Profiles</h1></div>
               <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-5 mb-4">
                 <h3 className="text-sm font-semibold text-[#7B7BFF] uppercase tracking-wide mb-4">Settings</h3>
                 <div className="mb-5">
