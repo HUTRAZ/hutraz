@@ -32,9 +32,9 @@ function MusclePills({ exercises, getExerciseFromLibrary }) {
     <div className="flex flex-wrap gap-1.5">
       {sorted.map(([muscle, count]) => {
         const mg = MUSCLE_GROUPS[muscle]
-        if (!mg) return <span key={muscle} className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white/5 text-[#888]">Other × {count}</span>
+        if (!mg) return <span key={muscle} className="text-xs font-semibold px-2 py-0.5 rounded-md bg-white/5 text-[#888]">Other × {count}</span>
         return (
-          <span key={muscle} className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md" style={{ background: mg.bg, color: mg.color }}>
+          <span key={muscle} className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md" style={{ background: mg.bg, color: mg.color }}>
             <MuscleIcon muscle={muscle} size={10} bare />
             {mg.label} × {count}
           </span>
@@ -604,7 +604,7 @@ function App() {
       {showSplash && (
         <div className="fixed inset-0 bg-[#0D0D1A] flex flex-col items-center justify-center z-50">
           <img src="/icon.svg" className="w-20 h-20 mb-4 animate-bounce" alt="Repliqe" />
-          <div className="text-2xl font-bold tracking-widest text-white">REPLIQE</div>
+          <div className="text-3xl font-bold tracking-widest text-white">REPLIQE</div>
           <div className="text-xs text-[#7B7BFF] mt-2">Simple tracking. Real progress.</div>
         </div>
       )}
@@ -615,11 +615,11 @@ function App() {
           {/* PROGRESS */}
           {page === 'progress' && (
             <div>
-              <div className="flex items-center gap-3 mb-6"><RepliqeLogo size={28} /><h1 className="text-2xl font-bold tracking-tight">Progress</h1></div>
+              <div className="flex items-center gap-3 mb-6"><RepliqeLogo size={28} /><h1 className="text-3xl font-bold tracking-tight">Progress</h1></div>
               <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-5 mb-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div><div className="text-2xl font-bold">{history.length}</div><div className="text-xs text-[#777]">Workouts</div></div>
-                  <div><div className="text-2xl font-bold">{history.reduce((sum, w) => sum + w.exercises.reduce((s, ex) => s + ex.sets.length, 0), 0)}</div><div className="text-xs text-[#777]">Sets logged</div></div>
+                  <div><div className="text-3xl font-bold">{history.length}</div><div className="text-sm text-[#777]">Workouts</div></div>
+                  <div><div className="text-3xl font-bold">{history.reduce((sum, w) => sum + w.exercises.reduce((s, ex) => s + ex.sets.length, 0), 0)}</div><div className="text-sm text-[#777]">Sets logged</div></div>
                 </div>
               </div>
               {history.length > 0 ? (
@@ -627,9 +627,9 @@ function App() {
                   <h3 className="text-sm font-semibold text-[#7B7BFF] uppercase tracking-wide mb-3">Recent workouts</h3>
                   {history.slice(0, 10).map((w, i) => (
                     <div key={i} className="bg-[#13132A] border border-[#232340] rounded-xl p-4 mb-3">
-                      <div className="flex justify-between items-center mb-2"><span className="text-sm font-bold">{w.name || w.date}</span><span className="text-xs text-[#777]">{relativeTime(w.date)}</span></div>
-                      <div className="flex items-center gap-3 mb-2 text-[11px] text-[#777]">{w.duration && <span>{formatDuration(w.duration)}</span>}<span>{w.exercises.reduce((s, ex) => s + ex.sets.length, 0)} sets</span></div>
-                      {w.exercises.map((ex, j) => <div key={j} className="text-xs text-[#666] ml-1">{ex.name} — {ex.sets.length} sets</div>)}
+                      <div className="flex justify-between items-center mb-2"><span className="text-base font-bold">{w.name || w.date}</span><span className="text-sm text-[#777]">{relativeTime(w.date)}</span></div>
+                      <div className="flex items-center gap-3 mb-2 text-sm text-[#777]">{w.duration && <span>{formatDuration(w.duration)}</span>}<span>{w.exercises.reduce((s, ex) => s + ex.sets.length, 0)} sets</span></div>
+                      {w.exercises.map((ex, j) => <div key={j} className="text-sm text-[#666] ml-1">{ex.name} — {ex.sets.length} sets</div>)}
                     </div>
                   ))}
                 </div>
@@ -650,37 +650,37 @@ function App() {
           {/* WORKOUT START SCREEN */}
           {page === 'workout' && !workoutActive && !showCompleteScreen && (
             <div>
-              <div className="flex items-center gap-3 mb-6"><RepliqeLogo size={28} /><h1 className="text-2xl font-bold tracking-tight">Workout</h1></div>
+              <div className="flex items-center gap-3 mb-6"><RepliqeLogo size={28} /><h1 className="text-3xl font-bold tracking-tight">Workout</h1></div>
 
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-semibold text-[#7B7BFF] uppercase tracking-wide">Start Workout</h3>
               </div>
-              <div className="text-[11px] text-[#666] mb-4">Choose one of these options to start your workout</div>
+              <div className="text-sm text-[#666] mb-4">Choose one of these options to start your workout</div>
 
-              <div className="text-[11px] font-bold text-[#777] uppercase tracking-wider mb-2">Suggested next</div>
+              <div className="text-xs font-bold text-[#777] uppercase tracking-wider mb-2">Suggested next</div>
               <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-4 mb-4">
                 {suggestedNext ? (<>
-                  <div className="flex justify-between items-center mb-2"><span className="text-[15px] font-bold">{suggestedNext.template.name}</span><span className="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide bg-[#5BF5A0]/10 text-[#5BF5A0]">Up next</span></div>
+                  <div className="flex justify-between items-center mb-2"><span className="text-lg font-bold">{suggestedNext.template.name}</span><span className="text-xs font-bold px-2 py-0.5 rounded-md uppercase tracking-wide bg-[#5BF5A0]/10 text-[#5BF5A0]">Up next</span></div>
                   <div className="flex flex-wrap gap-1 mb-2"><MusclePills exercises={suggestedNext.template.exercises} getExerciseFromLibrary={getExerciseFromLibrary} /></div>
-                  <div className="flex items-center gap-3 mb-3 text-[11px] text-[#777]"><span>{suggestedNext.template.exercises.length} exercises</span><span>{suggestedNext.template.exercises.reduce((s, ex) => s + ex.sets.length, 0)} sets</span><span>{suggestedNext.folderName}</span></div>
-                  <button onClick={() => tryStart('template', suggestedNext.template)} className="flex items-center justify-center gap-2 w-full py-2 mt-2 border-[1.5px] border-[#7B7BFF] rounded-xl text-xs font-bold text-[#7B7BFF] hover:bg-[#7B7BFF]/8 transition-colors"><PlayIcon className="w-3 h-3" /> Start</button>
+                  <div className="flex items-center gap-3 mb-3 text-sm text-[#777]"><span>{suggestedNext.template.exercises.length} exercises</span><span>{suggestedNext.template.exercises.reduce((s, ex) => s + ex.sets.length, 0)} sets</span><span>{suggestedNext.folderName}</span></div>
+                  <button onClick={() => tryStart('template', suggestedNext.template)} className="flex items-center justify-center gap-2 w-full py-2.5 mt-2 border-[1.5px] border-[#7B7BFF] rounded-xl text-sm font-bold text-[#7B7BFF] hover:bg-[#7B7BFF]/8 transition-colors"><PlayIcon className="w-3 h-3" /> Start</button>
                 </>) : <div className="text-xs text-[#666] italic py-2">Will show when you start using templates</div>}
               </div>
 
-              <div className="text-[11px] font-bold text-[#777] uppercase tracking-wider mb-2">Start fresh</div>
+              <div className="text-xs font-bold text-[#777] uppercase tracking-wider mb-2">Start fresh</div>
               <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-4 mb-4">
-                <div className="flex justify-between items-center mb-2"><span className="text-[15px] font-bold">Empty workout</span><span className="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide bg-white/5 text-[#888]">New</span></div>
-                <div className="text-[11px] text-[#666] mb-3">Start fresh and add exercises as you go</div>
-                <button onClick={startEmpty} className="flex items-center justify-center gap-2 w-full py-2 border-[1.5px] border-[#7B7BFF] rounded-xl text-xs font-bold text-[#7B7BFF] hover:bg-[#7B7BFF]/8 transition-colors"><PlayIcon className="w-3 h-3" /> Start</button>
+                <div className="flex justify-between items-center mb-2"><span className="text-lg font-bold">Empty workout</span><span className="text-xs font-bold px-2 py-0.5 rounded-md uppercase tracking-wide bg-white/5 text-[#888]">New</span></div>
+                <div className="text-sm text-[#666] mb-3">Start fresh and add exercises as you go</div>
+                <button onClick={startEmpty} className="flex items-center justify-center gap-2 w-full py-2.5 border-[1.5px] border-[#7B7BFF] rounded-xl text-sm font-bold text-[#7B7BFF] hover:bg-[#7B7BFF]/8 transition-colors"><PlayIcon className="w-3 h-3" /> Start</button>
               </div>
 
               {/* TEMPLATES */}
               <div className="border-t border-[#1a1a30] pt-6 mt-4">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-semibold text-[#7B7BFF] uppercase tracking-wide">Templates</h3>
-                  <button onClick={addFolder} className="text-[11px] font-semibold text-[#777] border border-[#2A2A4A] px-3 py-1.5 rounded-lg hover:border-[#7B7BFF] hover:text-[#7B7BFF] transition-colors">+ Folder</button>
+                  <button onClick={addFolder} className="text-sm font-semibold text-[#777] border border-[#2A2A4A] px-3 py-1.5 rounded-lg hover:border-[#7B7BFF] hover:text-[#7B7BFF] transition-colors">+ Folder</button>
                 </div>
-                <div className="text-[11px] text-[#666] mb-4">Tap folder to open/close · Use <span className="inline-flex flex-col align-middle mx-0.5"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-2.5 h-2.5 stroke-[#555]"><polyline points="18 15 12 9 6 15"/></svg><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-2.5 h-2.5 stroke-[#555]"><polyline points="6 9 12 15 18 9"/></svg></span> to reorder</div>
+                <div className="text-sm text-[#666] mb-4">Tap folder to open/close · Use <span className="inline-flex flex-col align-middle mx-0.5"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-2.5 h-2.5 stroke-[#555]"><polyline points="18 15 12 9 6 15"/></svg><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-2.5 h-2.5 stroke-[#555]"><polyline points="6 9 12 15 18 9"/></svg></span> to reorder</div>
                 {folders.map((folder, fi) => (
                   <div key={fi} className="mb-3">
                     <div className="flex items-center gap-2 mb-1.5">
@@ -691,7 +691,7 @@ function App() {
                       <button onClick={() => toggleFolder(fi)} className="flex items-center gap-2 flex-1 min-w-0">
                         <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={`w-4 h-4 shrink-0 transition-colors ${folder.open ? 'stroke-[#7B7BFF] fill-[#7B7BFF]/10' : 'stroke-[#555]'}`}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
                         {editingFolder === fi ? <input type="text" value={editingFolderName} onChange={(e) => setEditingFolderName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && confirmEditFolder()} onBlur={confirmEditFolder} autoFocus onClick={(e) => e.stopPropagation()} className="bg-[#1C1C38] border border-[#7B7BFF] rounded-lg px-2 py-1 text-sm font-semibold text-white outline-none flex-1 min-w-0" /> : <span className="text-sm font-semibold truncate">{folder.name}</span>}
-                        <span className="text-[11px] text-[#777] shrink-0">{folder.templates.length}</span>
+                        <span className="text-sm text-[#777] shrink-0">{folder.templates.length}</span>
                         <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className={`w-3.5 h-3.5 stroke-[#444] shrink-0 transition-transform ${folder.open ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
                       </button>
                       {editingFolder !== fi && (
@@ -703,7 +703,7 @@ function App() {
                     </div>
                     {folder.open && (
                       <div className="ml-7 border-l border-[#1a1a30] pl-3">
-                        {folder.templates.length === 0 ? <div className="text-[11px] text-[#666] py-3 italic">No templates</div> : folder.templates.map((t, ti) => (
+                        {folder.templates.length === 0 ? <div className="text-sm text-[#666] py-3 italic">No templates</div> : folder.templates.map((t, ti) => (
                           <div key={ti} className="bg-[#13132A] border border-[#232340] rounded-xl p-3.5 mb-2">
                             <div className="flex items-center gap-2">
                               <div className="flex flex-col shrink-0">
@@ -711,19 +711,19 @@ function App() {
                                 <button onClick={() => moveTemplateDown(fi, ti)} className={`text-[#444] p-0.5 ${ti >= folder.templates.length-1 && fi >= folders.length-1 ? 'opacity-20' : 'hover:text-[#7B7BFF]'}`} disabled={ti >= folder.templates.length-1 && fi >= folders.length-1}><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-2.5 h-2.5 stroke-current"><polyline points="6 9 12 15 18 9"/></svg></button>
                               </div>
                               <div className="flex-1 min-w-0">
-                                <div className="flex justify-between items-center mb-1.5"><span className="font-bold text-sm truncate">{t.name}</span><span className="text-[11px] text-[#777] shrink-0 ml-2">{t.exercises.length} ex · {t.exercises.reduce((s, ex) => s + ex.sets.length, 0)} sets</span></div>
+                                <div className="flex justify-between items-center mb-1.5"><span className="font-bold text-base truncate">{t.name}</span><span className="text-sm text-[#777] shrink-0 ml-2">{t.exercises.length} ex · {t.exercises.reduce((s, ex) => s + ex.sets.length, 0)} sets</span></div>
                                 <MusclePills exercises={t.exercises} getExerciseFromLibrary={getExerciseFromLibrary} />
                               </div>
                             </div>
                             <div className="flex gap-2 mt-2.5">
-                              <button onClick={() => tryStart('template', t)} className="flex-1 flex items-center justify-center gap-1.5 py-2 border-[1.5px] border-[#7B7BFF] rounded-lg text-xs font-bold text-[#7B7BFF] hover:bg-[#7B7BFF]/8 transition-colors"><PlayIcon className="w-2.5 h-2.5" />Start</button>
-                              <button onClick={() => editTemplate(fi, ti)} className="py-2 px-3 border border-[#2A2A4A] rounded-lg text-[11px] font-semibold text-[#aaa] hover:border-[#7B7BFF] hover:text-[#7B7BFF] transition-colors">Edit</button>
-                              <button onClick={() => duplicateTemplate(fi, ti)} className="py-2 px-3 border border-[#2A2A4A] rounded-lg text-[11px] font-semibold text-[#aaa] hover:border-[#7B7BFF] hover:text-[#7B7BFF] transition-colors">Copy</button>
-                              <button onClick={() => requestDeleteTemplate(fi, ti)} className="py-2 px-3 border border-[#2A2A4A] rounded-lg text-[11px] font-semibold text-[#777] hover:border-red-500/50 hover:text-red-400 transition-colors">Delete</button>
+                              <button onClick={() => tryStart('template', t)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border-[1.5px] border-[#7B7BFF] rounded-lg text-sm font-bold text-[#7B7BFF] hover:bg-[#7B7BFF]/8 transition-colors"><PlayIcon className="w-2.5 h-2.5" />Start</button>
+                              <button onClick={() => editTemplate(fi, ti)} className="py-2 px-3 border border-[#2A2A4A] rounded-lg text-sm font-semibold text-[#aaa] hover:border-[#7B7BFF] hover:text-[#7B7BFF] transition-colors">Edit</button>
+                              <button onClick={() => duplicateTemplate(fi, ti)} className="py-2 px-3 border border-[#2A2A4A] rounded-lg text-sm font-semibold text-[#aaa] hover:border-[#7B7BFF] hover:text-[#7B7BFF] transition-colors">Copy</button>
+                              <button onClick={() => requestDeleteTemplate(fi, ti)} className="py-2 px-3 border border-[#2A2A4A] rounded-lg text-sm font-semibold text-[#777] hover:border-red-500/50 hover:text-red-400 transition-colors">Delete</button>
                             </div>
                           </div>
                         ))}
-                        <button onClick={() => newBlankTemplate(fi)} className="w-full py-2.5 border border-dashed border-[#2A2A4A] rounded-xl text-[11px] font-semibold text-[#777] hover:border-[#7B7BFF] hover:text-[#7B7BFF] transition-colors mb-1">+ New template</button>
+                        <button onClick={() => newBlankTemplate(fi)} className="w-full py-2.5 border border-dashed border-[#2A2A4A] rounded-xl text-sm font-semibold text-[#777] hover:border-[#7B7BFF] hover:text-[#7B7BFF] transition-colors mb-1">+ New template</button>
                       </div>
                     )}
                   </div>
@@ -736,10 +736,10 @@ function App() {
           {page === 'workout' && workoutActive && !showCompleteScreen && (
             <div>
               <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2.5"><RepliqeLogo size={24} /><h1 className="text-2xl font-bold tracking-tight">{workoutName || 'Workout'}</h1></div>
+                <div className="flex items-center gap-2.5"><RepliqeLogo size={24} /><h1 className="text-3xl font-bold tracking-tight">{workoutName || 'Workout'}</h1></div>
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1.5 text-[#5BF5A0] text-sm font-bold tabular-nums"><div className="w-2 h-2 bg-[#5BF5A0] rounded-full animate-pulse" />{formatTime(workoutElapsed)}</div>
-                  <button onClick={cancelWorkout} className="text-[11px] font-semibold text-[#777] border border-[#2A2A4A] px-3 py-1.5 rounded-lg hover:border-red-500/50 hover:text-red-400 transition-colors">Cancel</button>
+                  <div className="flex items-center gap-1.5 text-[#5BF5A0] text-base font-bold tabular-nums"><div className="w-2 h-2 bg-[#5BF5A0] rounded-full animate-pulse" />{formatTime(workoutElapsed)}</div>
+                  <button onClick={cancelWorkout} className="text-sm font-semibold text-[#777] border border-[#2A2A4A] px-3 py-1.5 rounded-lg hover:border-red-500/50 hover:text-red-400 transition-colors">Cancel</button>
                 </div>
               </div>
 
@@ -747,7 +747,7 @@ function App() {
                 <div className="bg-[#7B7BFF]/10 border border-[#7B7BFF]/30 rounded-xl p-3 mb-4">
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0 mr-3">
-                      <div className="text-[10px] font-bold text-[#7B7BFF] uppercase tracking-wider mb-1">Editing template</div>
+                      <div className="text-xs font-bold text-[#7B7BFF] uppercase tracking-wider mb-1">Editing template</div>
                       <input type="text" value={workoutName} onChange={(e) => setWorkoutName(e.target.value)}
                         className="w-full bg-transparent border-b border-[#7B7BFF]/30 text-sm font-bold text-white outline-none focus:border-[#7B7BFF] transition-colors pb-1" />
                     </div>
@@ -954,10 +954,10 @@ function App() {
 
         {/* BOTTOM NAV */}
         <div className="fixed bottom-0 left-0 right-0 bg-[#0D0D1A]/95 backdrop-blur-xl border-t border-[#1a1a30] px-4 py-3 pb-8 flex justify-around max-w-md mx-auto">
-          <button onClick={() => setPage('progress')} className={`flex flex-col items-center gap-1 ${page === 'progress' ? 'opacity-100' : 'opacity-40'}`}><svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className={`w-5 h-5 ${page === 'progress' ? 'stroke-[#7B7BFF]' : 'stroke-white'}`}><path d="M18 20V10M12 20V4M6 20v-6"/></svg><span className={`text-[10px] font-semibold ${page === 'progress' ? 'text-[#7B7BFF]' : 'text-white'}`}>Progress</span></button>
-          <button onClick={() => { setPage('workout'); if (showCompleteScreen) {} }} className={`flex flex-col items-center gap-1 ${page === 'workout' ? 'opacity-100' : 'opacity-40'}`}><svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className={`w-5 h-5 ${page === 'workout' ? 'stroke-[#7B7BFF]' : 'stroke-white'}`}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span className={`text-[10px] font-semibold ${page === 'workout' ? 'text-[#7B7BFF]' : 'text-white'}`}>Workout</span></button>
-          <button onClick={() => setPage('library')} className={`flex flex-col items-center gap-1 ${page === 'library' ? 'opacity-100' : 'opacity-40'}`}><svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`w-5 h-5 ${page === 'library' ? 'stroke-[#7B7BFF]' : 'stroke-white'}`}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span className={`text-[10px] font-semibold ${page === 'library' ? 'text-[#7B7BFF]' : 'text-white'}`}>Exercises</span></button>
-          <button onClick={() => setPage('profile')} className={`flex flex-col items-center gap-1 ${page === 'profile' ? 'opacity-100' : 'opacity-40'}`}><svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className={`w-5 h-5 ${page === 'profile' ? 'stroke-[#7B7BFF]' : 'stroke-white'}`}><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg><span className={`text-[10px] font-semibold ${page === 'profile' ? 'text-[#7B7BFF]' : 'text-white'}`}>Profile</span></button>
+          <button onClick={() => setPage('progress')} className={`flex flex-col items-center gap-1 ${page === 'progress' ? 'opacity-100' : 'opacity-40'}`}><svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className={`w-5 h-5 ${page === 'progress' ? 'stroke-[#7B7BFF]' : 'stroke-white'}`}><path d="M18 20V10M12 20V4M6 20v-6"/></svg><span className={`text-xs font-semibold ${page === 'progress' ? 'text-[#7B7BFF]' : 'text-white'}`}>Progress</span></button>
+          <button onClick={() => { setPage('workout'); if (showCompleteScreen) {} }} className={`flex flex-col items-center gap-1 ${page === 'workout' ? 'opacity-100' : 'opacity-40'}`}><svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className={`w-5 h-5 ${page === 'workout' ? 'stroke-[#7B7BFF]' : 'stroke-white'}`}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span className={`text-xs font-semibold ${page === 'workout' ? 'text-[#7B7BFF]' : 'text-white'}`}>Workout</span></button>
+          <button onClick={() => setPage('library')} className={`flex flex-col items-center gap-1 ${page === 'library' ? 'opacity-100' : 'opacity-40'}`}><svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`w-5 h-5 ${page === 'library' ? 'stroke-[#7B7BFF]' : 'stroke-white'}`}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span className={`text-xs font-semibold ${page === 'library' ? 'text-[#7B7BFF]' : 'text-white'}`}>Exercises</span></button>
+          <button onClick={() => setPage('profile')} className={`flex flex-col items-center gap-1 ${page === 'profile' ? 'opacity-100' : 'opacity-40'}`}><svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className={`w-5 h-5 ${page === 'profile' ? 'stroke-[#7B7BFF]' : 'stroke-white'}`}><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg><span className={`text-xs font-semibold ${page === 'profile' ? 'text-[#7B7BFF]' : 'text-white'}`}>Profile</span></button>
         </div>
       </div>
     </>
