@@ -100,7 +100,7 @@ function ExerciseCard({ exercise, exIndex, isEditing, exerciseCount, onMoveUp, o
   const headers = getHeaders()
   const doneStyle = 'border-[#7B7BFF]/25 bg-[#7B7BFF]/5 text-[#B8B8FF]'
   const editStyle = 'border-[#2A2A4A] text-white placeholder-[#3a3a55] focus:border-[#7B7BFF] focus:shadow-[0_0_0_3px_rgba(123,123,255,0.15)]'
-  const base = 'w-full min-w-0 bg-[#1C1C38] border rounded-lg px-1.5 py-1.5 text-center text-[13px] font-bold outline-none transition-all'
+  const base = 'w-full min-w-0 bg-[#1C1C38] border rounded-lg px-1.5 py-1.5 text-center text-sm font-bold outline-none transition-all'
 
   function renderInputs(set, j) {
     switch (type) {

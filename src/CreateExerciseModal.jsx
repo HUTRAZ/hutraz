@@ -58,18 +58,18 @@ export default function CreateExerciseModal({ onSave, onCancel, onDelete, editEx
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end justify-center z-50">
       <div className="w-full max-w-md bg-[#13132A] rounded-t-3xl p-5 pb-10" style={{ maxHeight: '85vh', overflowY: 'auto' }}>
         <h2 className="text-lg font-bold text-center mb-1">{isEditing ? 'Edit Exercise' : 'Create Exercise'}</h2>
-        <p className="text-xs text-[#777] text-center mb-5">Define your custom exercise</p>
+        <p className="text-sm text-[#777] text-center mb-5">Define your custom exercise</p>
 
         {/* Name */}
         <div className="mb-4">
-          <div className="text-[10px] font-bold text-[#666] uppercase tracking-wider mb-1.5">Name</div>
+          <div className="text-xs font-bold text-[#666] uppercase tracking-wider mb-1.5">Name</div>
           <input type="text" placeholder="e.g. Svend Press" value={name} onChange={e => setName(e.target.value)} autoFocus
             className="w-full bg-[#1C1C38] border-[1.5px] border-[#2A2A4A] rounded-xl px-4 py-3 text-sm text-white placeholder-[#3a3a55] outline-none focus:border-[#7B7BFF] transition-colors" />
         </div>
 
         {/* Muscle group */}
         <div className="mb-4">
-          <div className="text-[10px] font-bold text-[#666] uppercase tracking-wider mb-1.5">Muscle Group</div>
+          <div className="text-xs font-bold text-[#666] uppercase tracking-wider mb-1.5">Muscle Group</div>
           <div className="grid grid-cols-3 gap-1.5">
             {MUSCLE_KEYS.map(m => {
               const mg = MUSCLE_GROUPS[m]
@@ -88,7 +88,7 @@ export default function CreateExerciseModal({ onSave, onCancel, onDelete, editEx
 
         {/* Equipment */}
         <div className="mb-4">
-          <div className="text-[10px] font-bold text-[#666] uppercase tracking-wider mb-1.5">Equipment</div>
+          <div className="text-xs font-bold text-[#666] uppercase tracking-wider mb-1.5">Equipment</div>
           <div className="flex gap-1.5 flex-wrap">
             {EQUIPMENT_TYPES.map(e => (
               <button key={e} onClick={() => setEquipment(e)}
@@ -100,7 +100,7 @@ export default function CreateExerciseModal({ onSave, onCancel, onDelete, editEx
         {/* Movement (only for arms, legs, core) */}
         {needsManualMovement && muscle !== 'core' && (
           <div className="mb-4">
-            <div className="text-[10px] font-bold text-[#666] uppercase tracking-wider mb-1.5">Movement</div>
+            <div className="text-xs font-bold text-[#666] uppercase tracking-wider mb-1.5">Movement</div>
             <div className="flex gap-1.5">
               {MOVEMENT_OPTIONS.map(m => (
                 <button key={m.id} onClick={() => setMovement(m.id)}
@@ -112,7 +112,7 @@ export default function CreateExerciseModal({ onSave, onCancel, onDelete, editEx
 
         {/* Exercise type */}
         <div className="mb-5">
-          <div className="text-[10px] font-bold text-[#666] uppercase tracking-wider mb-1.5">Exercise Type</div>
+          <div className="text-xs font-bold text-[#666] uppercase tracking-wider mb-1.5">Exercise Type</div>
           <div className="flex flex-col gap-1.5">
             {TYPE_KEYS.map(t => (
               <button key={t} onClick={() => setType(t)}
@@ -137,7 +137,7 @@ export default function CreateExerciseModal({ onSave, onCancel, onDelete, editEx
               <button onClick={() => setShowDelete(true)} className="w-full py-3 text-sm font-semibold text-red-400 mb-1">Delete exercise</button>
             ) : (
               <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-3">
-                <p className="text-xs text-[#aaa] text-center mb-3">Delete "{editExercise.name}"? This cannot be undone.</p>
+                <p className="text-sm text-[#aaa] text-center mb-3">Delete "{editExercise.name}"? This cannot be undone.</p>
                 <div className="flex gap-2">
                   <button onClick={() => onDelete(editExercise)} className="flex-1 py-2.5 bg-red-500 rounded-xl text-sm font-bold">Delete</button>
                   <button onClick={() => setShowDelete(false)} className="flex-1 py-2.5 border border-[#2A2A4A] rounded-xl text-sm font-semibold text-[#888]">Cancel</button>

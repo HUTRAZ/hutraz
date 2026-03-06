@@ -52,22 +52,22 @@ export default function ExerciseLibrary({ allExercises, mode = 'page', onAdd, on
 
       {/* My exercises toggle */}
       <div className="flex bg-[#1C1C38] border-[1.5px] border-[#2A2A4A] rounded-xl overflow-hidden mb-3">
-        <button onClick={() => setMyOnly(false)} className={`flex-1 py-2 text-[11px] font-bold transition-all ${!myOnly ? 'bg-[#7B7BFF] text-white' : 'text-[#888]'}`}>All exercises</button>
-        <button onClick={() => setMyOnly(true)} className={`flex-1 py-2 text-[11px] font-bold transition-all ${myOnly ? 'bg-[#5BF5A0]/15 text-[#5BF5A0]' : 'text-[#888]'}`}>My exercises{customCount > 0 ? ` (${customCount})` : ''}</button>
+        <button onClick={() => setMyOnly(false)} className={`flex-1 py-2.5 text-sm font-bold transition-all ${!myOnly ? 'bg-[#7B7BFF] text-white' : 'text-[#888]'}`}>All exercises</button>
+        <button onClick={() => setMyOnly(true)} className={`flex-1 py-2.5 text-sm font-bold transition-all ${myOnly ? 'bg-[#5BF5A0]/15 text-[#5BF5A0]' : 'text-[#888]'}`}>My exercises{customCount > 0 ? ` (${customCount})` : ''}</button>
       </div>
 
       {/* Create custom */}
-      <button onClick={onCreateCustom} className="flex items-center justify-center gap-1.5 w-full py-3 border-[1.5px] border-dashed border-[#5BF5A0]/40 rounded-xl text-[#5BF5A0] text-xs font-semibold mb-3 hover:bg-[#5BF5A0]/5 transition-colors">+ Create custom exercise</button>
+      <button onClick={onCreateCustom} className="flex items-center justify-center gap-1.5 w-full py-3 border-[1.5px] border-dashed border-[#5BF5A0]/40 rounded-xl text-[#5BF5A0] text-sm font-semibold mb-3 hover:bg-[#5BF5A0]/5 transition-colors">+ Create custom exercise</button>
 
       {/* Muscle group filter */}
       <div className="mb-2">
-        <div className="text-[9px] font-bold text-[#666] uppercase tracking-wider mb-1.5">Muscle Group</div>
+        <div className="text-xs font-bold text-[#666] uppercase tracking-wider mb-1.5">Muscle Group</div>
         <div className="flex gap-1 flex-wrap">
           <button onClick={() => setMuscles([])}
-            className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold border-[1.5px] transition-all ${muscles.length === 0 ? chipOn : chipOff}`}>All</button>
+            className={`px-2.5 py-1.5 rounded-lg text-sm font-semibold border-[1.5px] transition-all ${muscles.length === 0 ? chipOn : chipOff}`}>All</button>
           {MUSCLE_KEYS.map(m => (
             <button key={m} onClick={() => toggleMuscle(m)}
-              className="px-2.5 py-1 rounded-lg text-[10px] font-semibold border-[1.5px] transition-all"
+              className="px-2.5 py-1.5 rounded-lg text-sm font-semibold border-[1.5px] transition-all"
               style={muscleChipStyle(m, muscles.includes(m))}>
               {MUSCLE_GROUPS[m].label}
             </button>
@@ -77,13 +77,13 @@ export default function ExerciseLibrary({ allExercises, mode = 'page', onAdd, on
 
       {/* Equipment filter */}
       <div className="mb-3">
-        <div className="text-[9px] font-bold text-[#666] uppercase tracking-wider mb-1.5">Equipment</div>
+        <div className="text-xs font-bold text-[#666] uppercase tracking-wider mb-1.5">Equipment</div>
         <div className="flex gap-1 flex-wrap">
           <button onClick={() => setEquipment('all')}
-            className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold border-[1.5px] transition-all ${equipment === 'all' ? chipOn : chipOff}`}>All</button>
+            className={`px-2.5 py-1.5 rounded-lg text-sm font-semibold border-[1.5px] transition-all ${equipment === 'all' ? chipOn : chipOff}`}>All</button>
           {EQUIPMENT_TYPES.map(e => (
             <button key={e} onClick={() => setEquipment(equipment === e ? 'all' : e)}
-              className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold border-[1.5px] transition-all ${equipment === e ? chipOn : chipOff}`}>{e}</button>
+              className={`px-2.5 py-1.5 rounded-lg text-sm font-semibold border-[1.5px] transition-all ${equipment === e ? chipOn : chipOff}`}>{e}</button>
           ))}
         </div>
       </div>
@@ -93,8 +93,8 @@ export default function ExerciseLibrary({ allExercises, mode = 'page', onAdd, on
       {/* Exercise list grouped by muscle */}
       {grouped.length === 0 && (
         <div className="text-center py-8">
-          <div className="text-sm text-[#777]">No exercises found</div>
-          <div className="text-xs text-[#555] mt-1">Try adjusting your filters</div>
+          <div className="text-base text-[#777]">No exercises found</div>
+          <div className="text-sm text-[#555] mt-1">Try adjusting your filters</div>
         </div>
       )}
 
@@ -105,8 +105,8 @@ export default function ExerciseLibrary({ allExercises, mode = 'page', onAdd, on
             {/* Section header */}
             <div className="flex items-center gap-2 mt-3 mb-2">
               <MuscleIcon muscle={muscle} size={14} />
-              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: mg.color }}>{mg.label}</span>
-              <span className="text-[10px] font-semibold text-[#555]">{exs.length}</span>
+              <span className="text-sm font-bold uppercase tracking-wider" style={{ color: mg.color }}>{mg.label}</span>
+              <span className="text-sm font-semibold text-[#555]">{exs.length}</span>
             </div>
 
             {/* Exercise items */}
@@ -121,12 +121,12 @@ export default function ExerciseLibrary({ allExercises, mode = 'page', onAdd, on
                   <MuscleIcon muscle={ex.muscle} size={16} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[13px] font-bold text-white truncate">{ex.name}</span>
-                      {ex.isCustom && <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-[#5BF5A0]/10 text-[#5BF5A0] uppercase tracking-wide shrink-0">Custom</span>}
+                      <span className="text-base font-bold text-white truncate">{ex.name}</span>
+                      {ex.isCustom && <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-[#5BF5A0]/10 text-[#5BF5A0] uppercase tracking-wide shrink-0">Custom</span>}
                     </div>
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-white/5 text-[#888]">{ex.equipment}</span>
-                      <span className="text-[9px] font-semibold text-[#555]">{typeLabel}</span>
+                      <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-white/5 text-[#888]">{ex.equipment}</span>
+                      <span className="text-xs font-semibold text-[#555]">{typeLabel}</span>
                     </div>
                   </div>
                   {mode === 'modal' && (
@@ -170,7 +170,7 @@ export default function ExerciseLibrary({ allExercises, mode = 'page', onAdd, on
             <div className="px-5 pb-8 pt-3 shrink-0 border-t border-[#1a1a30]">
               <button onClick={confirmAdd} className="w-full py-4 bg-gradient-to-r from-[#7B7BFF] to-[#6060DD] rounded-2xl font-bold text-sm shadow-lg shadow-[#7B7BFF]/25 flex items-center justify-center gap-2">
                 Add {selected.length} exercise{selected.length !== 1 ? 's' : ''}
-                <span className="bg-white/20 text-white text-xs font-extrabold px-2 py-0.5 rounded-md">{selected.length}</span>
+                <span className="bg-white/20 text-white text-sm font-extrabold px-2 py-0.5 rounded-md">{selected.length}</span>
               </button>
             </div>
           )}
@@ -184,8 +184,8 @@ export default function ExerciseLibrary({ allExercises, mode = 'page', onAdd, on
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-1">{logoSvg}<h1 className="text-2xl font-bold tracking-tight">Exercises</h1></div>
-      <div className="text-xs text-[#7B7BFF] mb-4">{totalCount} exercises{customCount > 0 ? ` · ${customCount} custom` : ''}</div>
+      <div className="flex items-center gap-3 mb-1">{logoSvg}<h1 className="text-3xl font-bold tracking-tight">Exercises</h1></div>
+      <div className="text-sm text-[#7B7BFF] mb-4">{totalCount} exercises{customCount > 0 ? ` · ${customCount} custom` : ''}</div>
       {content}
     </div>
   )

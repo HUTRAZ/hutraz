@@ -605,7 +605,7 @@ function App() {
         <div className="fixed inset-0 bg-[#0D0D1A] flex flex-col items-center justify-center z-50">
           <img src="/icon.svg" className="w-20 h-20 mb-4 animate-bounce" alt="Repliqe" />
           <div className="text-3xl font-bold tracking-widest text-white">REPLIQE</div>
-          <div className="text-xs text-[#7B7BFF] mt-2">Simple tracking. Real progress.</div>
+          <div className="text-sm text-[#7B7BFF] mt-2">Simple tracking. Real progress.</div>
         </div>
       )}
 
@@ -752,8 +752,8 @@ function App() {
                         className="w-full bg-transparent border-b border-[#7B7BFF]/30 text-sm font-bold text-white outline-none focus:border-[#7B7BFF] transition-colors pb-1" />
                     </div>
                     <div className="flex gap-2 shrink-0">
-                      <button onClick={saveEditedTemplate} className="px-3 py-1.5 bg-[#7B7BFF] rounded-lg text-xs font-bold">Save</button>
-                      <button onClick={cancelEditTemplate} className="px-3 py-1.5 border border-[#2A2A4A] rounded-lg text-xs font-semibold text-[#888]">Cancel</button>
+                      <button onClick={saveEditedTemplate} className="px-3 py-1.5 bg-[#7B7BFF] rounded-lg text-sm font-bold">Save</button>
+                      <button onClick={cancelEditTemplate} className="px-3 py-1.5 border border-[#2A2A4A] rounded-lg text-sm font-semibold text-[#888]">Cancel</button>
                     </div>
                   </div>
                 </div>
@@ -793,12 +793,12 @@ function App() {
           {/* PROFILE */}
           {page === 'profile' && (
             <div>
-              <div className="flex items-center gap-3 mb-6"><RepliqeLogo size={28} /><h1 className="text-2xl font-bold tracking-tight">Profile</h1></div>
+              <div className="flex items-center gap-3 mb-6"><RepliqeLogo size={28} /><h1 className="text-3xl font-bold tracking-tight">Profile</h1></div>
               <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-5 mb-4">
                 <h3 className="text-sm font-semibold text-[#7B7BFF] uppercase tracking-wide mb-4">Settings</h3>
                 <div className="mb-5">
                   <div className="text-sm font-semibold mb-1">Bodyweight</div>
-                  <div className="text-xs text-[#777] mb-3">Used for volume calculation on bodyweight exercises</div>
+                  <div className="text-sm text-[#777] mb-3">Used for volume calculation on bodyweight exercises</div>
                   <div className="flex items-center gap-3">
                     <input type="number" inputMode="decimal" value={bodyweight || ''} onChange={(e) => setBodyweight(e.target.value === '' ? '' : Number(e.target.value))} onBlur={() => { if (bodyweight === '' || bodyweight === 0) setBodyweight(0) }} className="w-24 bg-[#1C1C38] border border-[#2A2A4A] rounded-xl px-3 py-2 text-center text-sm font-bold text-white outline-none focus:border-[#7B7BFF] transition-colors" />
                     <span className="text-sm text-[#777]">{unitWeight}</span>
@@ -806,36 +806,36 @@ function App() {
                 </div>
                 <div className="mb-5">
                   <div className="text-sm font-semibold mb-1">Weight unit</div>
-                  <div className="text-xs text-[#777] mb-3">Used across all exercises</div>
+                  <div className="text-sm text-[#777] mb-3">Used across all exercises</div>
                   <div className="flex gap-2">
                     {['kg', 'lbs'].map(u => <button key={u} onClick={() => setUnitWeight(u)} className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${unitWeight === u ? 'bg-[#7B7BFF] text-white' : 'bg-[#1C1C38] border border-[#2A2A4A] text-[#888] hover:border-[#7B7BFF]'}`}>{u}</button>)}
                   </div>
                 </div>
                 <div className="mb-5">
                   <div className="text-sm font-semibold mb-1">Distance unit</div>
-                  <div className="text-xs text-[#777] mb-3">Used for distance exercises</div>
+                  <div className="text-sm text-[#777] mb-3">Used for distance exercises</div>
                   <div className="flex gap-2">
                     {['km', 'miles'].map(u => <button key={u} onClick={() => setUnitDistance(u)} className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${unitDistance === u ? 'bg-[#7B7BFF] text-white' : 'bg-[#1C1C38] border border-[#2A2A4A] text-[#888] hover:border-[#7B7BFF]'}`}>{u}</button>)}
                   </div>
                 </div>
                 <div className="mb-5">
                   <div className="text-sm font-semibold mb-1">Decimal separator</div>
-                  <div className="text-xs text-[#777] mb-3">How decimals are displayed</div>
+                  <div className="text-sm text-[#777] mb-3">How decimals are displayed</div>
                   <div className="flex gap-2">
                     {['.', ','].map(u => <button key={u} onClick={() => setUnitDecimal(u)} className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${unitDecimal === u ? 'bg-[#7B7BFF] text-white' : 'bg-[#1C1C38] border border-[#2A2A4A] text-[#888] hover:border-[#7B7BFF]'}`}>{u === '.' ? '1.5' : '1,5'}</button>)}
                   </div>
                 </div>
                 <div className="mb-5">
                   <div className="text-sm font-semibold mb-1">Rest timer</div>
-                  <div className="text-xs text-[#777] mb-3">Default rest duration between sets</div>
+                  <div className="text-sm text-[#777] mb-3">Default rest duration between sets</div>
                   <div className="flex gap-2 flex-wrap">
                     {REST_PRESETS.map(s => <button key={s} onClick={() => setDefaultRest(s)} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${defaultRest === s ? 'bg-[#7B7BFF] text-white' : 'bg-[#1C1C38] border border-[#2A2A4A] text-[#888] hover:border-[#7B7BFF]'}`}>{s === 0 ? 'None' : formatTime(s)}</button>)}
                   </div>
-                  <div className="text-xs text-[#444] mt-3">Current: {defaultRest === 0 ? 'None' : formatTime(defaultRest)}</div>
+                  <div className="text-sm text-[#444] mt-3">Current: {defaultRest === 0 ? 'None' : formatTime(defaultRest)}</div>
                 </div>
                 <div className="mb-2">
                   <div className="text-sm font-semibold mb-1">Week starts on</div>
-                  <div className="text-xs text-[#777] mb-3">Used for weekly streak tracking</div>
+                  <div className="text-sm text-[#777] mb-3">Used for weekly streak tracking</div>
                   <div className="flex gap-2 flex-wrap">
                     {WEEK_DAYS.map((d, i) => <button key={i} onClick={() => setWeekStart(i)} className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${weekStart === i ? 'bg-[#7B7BFF] text-white' : 'bg-[#1C1C38] border border-[#2A2A4A] text-[#888] hover:border-[#7B7BFF]'}`}>{d.slice(0,3)}</button>)}
                   </div>
@@ -843,7 +843,7 @@ function App() {
               </div>
               <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-5">
                 <h3 className="text-sm font-semibold text-[#7B7BFF] uppercase tracking-wide mb-4">About</h3>
-                <div className="text-xs text-[#777]"><div className="mb-1">REPLIQE v1.1</div><div>Simple tracking. Real progress.</div></div>
+                <div className="text-sm text-[#777]"><div className="mb-1">REPLIQE v1.1</div><div>Simple tracking. Real progress.</div></div>
               </div>
             </div>
           )}
@@ -887,11 +887,11 @@ function App() {
             <div className="w-full max-w-md bg-[#13132A] rounded-t-3xl p-6 pb-10">
               <h2 className="text-lg font-bold text-center mb-2">Finish workout</h2>
               {isTemplateBased() ? (<>
-                <p className="text-xs text-[#777] text-center mb-6">Update templates with today's values?</p>
+                <p className="text-sm text-[#777] text-center mb-6">Update templates with today's values?</p>
                 <button onClick={() => confirmFinish(true)} className="w-full py-4 bg-gradient-to-r from-[#7B7BFF] to-[#6060DD] rounded-2xl font-bold text-sm mb-3 shadow-lg shadow-[#7B7BFF]/25">Save & update all templates</button>
                 <button onClick={() => confirmFinish(false)} className="w-full py-3 border border-[#2A2A4A] rounded-2xl text-sm font-semibold text-[#888] mb-3">Save without updating templates</button>
               </>) : (<>
-                <p className="text-xs text-[#777] text-center mb-6">Save this workout as a reusable template?</p>
+                <p className="text-sm text-[#777] text-center mb-6">Save this workout as a reusable template?</p>
                 <button onClick={() => { setShowFinishModal(false); setShowSaveModal(true) }} className="w-full py-4 bg-gradient-to-r from-[#7B7BFF] to-[#6060DD] rounded-2xl font-bold text-sm mb-3 shadow-lg shadow-[#7B7BFF]/25">Save as template</button>
                 <button onClick={() => confirmFinish(false)} className="w-full py-3 border border-[#2A2A4A] rounded-2xl text-sm font-semibold text-[#888] mb-3">Save without template</button>
               </>)}
@@ -905,7 +905,7 @@ function App() {
             <div className="w-full max-w-sm bg-[#13132A] border border-[#232340] rounded-2xl p-6">
               <div className="flex justify-center mb-4"><div className="w-12 h-12 bg-[#7B7BFF]/10 rounded-full flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="w-6 h-6 stroke-[#7B7BFF]"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div></div>
               <h2 className="text-base font-bold text-center mb-2">Active workout</h2>
-              <p className="text-xs text-[#888] text-center mb-5">You have an active workout with <span className="font-bold text-white">{exercises.length} exercise{exercises.length !== 1 ? 's' : ''}</span>. Starting a new one will discard it.</p>
+              <p className="text-sm text-[#888] text-center mb-5">You have an active workout with <span className="font-bold text-white">{exercises.length} exercise{exercises.length !== 1 ? 's' : ''}</span>. Starting a new one will discard it.</p>
               <button onClick={confirmDiscardAndStart} className="w-full py-3 bg-red-500 rounded-xl font-bold text-sm mb-2">Discard & start new</button>
               <button onClick={() => setPendingStart(null)} className="w-full py-3 text-sm font-semibold text-[#777]">Keep current workout</button>
             </div>
@@ -917,8 +917,8 @@ function App() {
             <div className="w-full max-w-sm bg-[#13132A] border border-[#232340] rounded-2xl p-6">
               <div className="flex justify-center mb-4"><div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="w-6 h-6 stroke-red-400"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div></div>
               <h2 className="text-base font-bold text-center mb-2">Delete "{folders[deletingFolder]?.name}"?</h2>
-              <p className="text-xs text-[#888] text-center mb-1">This folder contains <span className="font-bold text-white">{folders[deletingFolder]?.templates.length} template{folders[deletingFolder]?.templates.length !== 1 ? 's' : ''}</span>.</p>
-              <p className="text-xs text-[#777] text-center mb-5">Templates will be moved to "{folders.find((_, i) => i !== deletingFolder)?.name}".</p>
+              <p className="text-sm text-[#888] text-center mb-1">This folder contains <span className="font-bold text-white">{folders[deletingFolder]?.templates.length} template{folders[deletingFolder]?.templates.length !== 1 ? 's' : ''}</span>.</p>
+              <p className="text-sm text-[#777] text-center mb-5">Templates will be moved to "{folders.find((_, i) => i !== deletingFolder)?.name}".</p>
               <button onClick={confirmDeleteFolder} className="w-full py-3 bg-red-500 rounded-xl font-bold text-sm mb-2">Delete folder</button>
               <button onClick={() => setDeletingFolder(null)} className="w-full py-3 text-sm font-semibold text-[#777]">Cancel</button>
             </div>
@@ -930,7 +930,7 @@ function App() {
             <div className="w-full max-w-sm bg-[#13132A] border border-[#232340] rounded-2xl p-6">
               <div className="flex justify-center mb-4"><div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="w-6 h-6 stroke-red-400"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div></div>
               <h2 className="text-base font-bold text-center mb-2">Delete template?</h2>
-              <p className="text-xs text-[#888] text-center mb-5">"{folders[deletingTemplate.fi]?.templates[deletingTemplate.ti]?.name}" will be permanently deleted.</p>
+              <p className="text-sm text-[#888] text-center mb-5">"{folders[deletingTemplate.fi]?.templates[deletingTemplate.ti]?.name}" will be permanently deleted.</p>
               <button onClick={confirmDeleteTemplate} className="w-full py-3 bg-red-500 rounded-xl font-bold text-sm mb-2">Delete template</button>
               <button onClick={() => setDeletingTemplate(null)} className="w-full py-3 text-sm font-semibold text-[#777]">Cancel</button>
             </div>
@@ -945,7 +945,7 @@ function App() {
             <div className="w-full max-w-sm bg-[#13132A] border border-[#232340] rounded-2xl p-6">
               <div className="flex justify-center mb-4"><div className="w-12 h-12 bg-[#7B7BFF]/10 rounded-full flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="w-6 h-6 stroke-[#7B7BFF]"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div></div>
               <h2 className="text-base font-bold text-center mb-2">Incomplete sets</h2>
-              <p className="text-xs text-[#888] text-center mb-5">You completed <span className="font-bold text-white">{incompleteSetsWarning.done} of {incompleteSetsWarning.total}</span> sets. Incomplete sets won't be saved.</p>
+              <p className="text-sm text-[#888] text-center mb-5">You completed <span className="font-bold text-white">{incompleteSetsWarning.done} of {incompleteSetsWarning.total}</span> sets. Incomplete sets won't be saved.</p>
               <button onClick={() => { setIncompleteSetsWarning(null); setShowFinishModal(true) }} className="w-full py-3 bg-gradient-to-r from-[#7B7BFF] to-[#6060DD] rounded-xl font-bold text-sm mb-2 shadow-lg shadow-[#7B7BFF]/25">Finish anyway</button>
               <button onClick={() => setIncompleteSetsWarning(null)} className="w-full py-3 text-sm font-semibold text-[#777]">Continue workout</button>
             </div>
@@ -975,23 +975,23 @@ function WorkoutCompleteScreen({ data, weekDays, weekStreak, onDone, formatDurat
         <div className="w-16 h-16 rounded-full bg-[#5BF5A0]/12 flex items-center justify-center mx-auto mb-4 animate-bounce">
           <svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8 stroke-[#5BF5A0]"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
-        <h1 className="text-[22px] font-extrabold tracking-tight">Workout Complete!</h1>
-        <div className="text-[13px] font-semibold text-[#7B7BFF] mt-1">{name}</div>
+        <h1 className="text-3xl font-extrabold tracking-tight">Workout Complete!</h1>
+        <div className="text-sm font-semibold text-[#7B7BFF] mt-1">{name}</div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-2 mb-4">
         <div className="bg-[#13132A] border border-[#232340] rounded-xl p-3.5 text-center">
-          <div className="text-[22px] font-extrabold">{Math.floor(duration/60)}</div>
-          <div className="text-[11px] font-bold text-[#777] uppercase tracking-wider mt-1">Minutes</div>
+          <div className="text-3xl font-extrabold">{Math.floor(duration/60)}</div>
+          <div className="text-sm font-bold text-[#777] uppercase tracking-wider mt-1">Minutes</div>
         </div>
         <div className="bg-[#13132A] border border-[#232340] rounded-xl p-3.5 text-center">
-          <div className="text-[22px] font-extrabold">{setCount}</div>
-          <div className="text-[11px] font-bold text-[#777] uppercase tracking-wider mt-1">Sets</div>
+          <div className="text-3xl font-extrabold">{setCount}</div>
+          <div className="text-sm font-bold text-[#777] uppercase tracking-wider mt-1">Sets</div>
         </div>
         <div className="bg-[#13132A] border border-[#232340] rounded-xl p-3.5 text-center">
-          <div className="text-[22px] font-extrabold">{volume.toLocaleString()}</div>
-          <div className="text-[11px] font-bold text-[#777] uppercase tracking-wider mt-1">{unitWeight} Volume</div>
+          <div className="text-3xl font-extrabold">{volume.toLocaleString()}</div>
+          <div className="text-sm font-bold text-[#777] uppercase tracking-wider mt-1">{unitWeight} Volume</div>
         </div>
       </div>
 
@@ -999,15 +999,15 @@ function WorkoutCompleteScreen({ data, weekDays, weekStreak, onDone, formatDurat
       <div className={`border rounded-2xl p-4 mb-3 ${newPRs.length > 0 ? 'bg-gradient-to-br from-[#7B7BFF]/8 to-[#5BF5A0]/5 border-[#7B7BFF]/15' : 'bg-[#13132A] border-[#232340]'}`}>
         <div className="flex items-center gap-1.5 mb-2.5">
           <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`w-4 h-4 ${newPRs.length > 0 ? 'stroke-[#7B7BFF]' : 'stroke-[#444]'}`}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-          <span className={`text-[11px] font-bold uppercase tracking-wider ${newPRs.length > 0 ? 'text-[#7B7BFF]' : 'text-[#444]'}`}>Personal Records</span>
+          <span className={`text-sm font-bold uppercase tracking-wider ${newPRs.length > 0 ? 'text-[#7B7BFF]' : 'text-[#444]'}`}>Personal Records</span>
         </div>
         {newPRs.length > 0 ? newPRs.map((pr, i) => (
           <div key={i} className="flex items-center justify-between py-1.5">
-            <span className="text-[13px] font-semibold">{pr.name}</span>
-            <span className="text-[13px] font-extrabold text-[#5BF5A0]">{pr.display}</span>
+            <span className="text-sm font-semibold">{pr.name}</span>
+            <span className="text-sm font-extrabold text-[#5BF5A0]">{pr.display}</span>
           </div>
         )) : (
-          <div className="text-xs text-[#777] italic">No new records today — keep pushing!</div>
+          <div className="text-sm text-[#777] italic">No new records today — keep pushing!</div>
         )}
       </div>
 
@@ -1015,42 +1015,42 @@ function WorkoutCompleteScreen({ data, weekDays, weekStreak, onDone, formatDurat
       <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-4 mb-3">
         <div className="flex items-center gap-1.5 mb-2.5">
           <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="w-4 h-4 stroke-[#7B7BFF]"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
-          <span className="text-[11px] font-bold text-[#777] uppercase tracking-wider">
+          <span className="text-sm font-bold text-[#777] uppercase tracking-wider">
             {templateName ? `vs. last ${templateName}` : 'Progression'}
           </span>
         </div>
         {progression ? (<>
           <div className="flex items-center justify-between py-1.5 border-b border-[#1a1a30]">
-            <span className="text-xs text-[#aaa]">Volume</span>
+            <span className="text-sm text-[#aaa]">Volume</span>
             {(() => {
               const diff = progression.curVolume - progression.prevVolume
-              if (diff > 0) return <span className="flex items-center gap-1 text-xs font-bold text-[#5BF5A0]"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-3 h-3 stroke-[#5BF5A0]"><polyline points="18 15 12 9 6 15"/></svg>+{diff.toLocaleString()} {unitWeight}</span>
-              if (diff < 0) return <span className="flex items-center gap-1 text-xs font-bold text-[#ff6b6b]"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-3 h-3 stroke-[#ff6b6b]"><polyline points="6 9 12 15 18 9"/></svg>{diff.toLocaleString()} {unitWeight}</span>
-              return <span className="text-xs font-bold text-[#555]">Same ({progression.curVolume.toLocaleString()} {unitWeight})</span>
+              if (diff > 0) return <span className="flex items-center gap-1 text-sm font-bold text-[#5BF5A0]"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-3 h-3 stroke-[#5BF5A0]"><polyline points="18 15 12 9 6 15"/></svg>+{diff.toLocaleString()} {unitWeight}</span>
+              if (diff < 0) return <span className="flex items-center gap-1 text-sm font-bold text-[#ff6b6b]"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-3 h-3 stroke-[#ff6b6b]"><polyline points="6 9 12 15 18 9"/></svg>{diff.toLocaleString()} {unitWeight}</span>
+              return <span className="text-sm font-bold text-[#555]">Same ({progression.curVolume.toLocaleString()} {unitWeight})</span>
             })()}
           </div>
           {progression.prevDuration > 0 && (
           <div className="flex items-center justify-between py-1.5 border-b border-[#1a1a30]">
-            <span className="text-xs text-[#aaa]">Duration</span>
+            <span className="text-sm text-[#aaa]">Duration</span>
             {(() => {
               const diffMin = Math.floor(progression.curDuration/60) - Math.floor(progression.prevDuration/60)
-              if (diffMin < 0) return <span className="flex items-center gap-1 text-xs font-bold text-[#5BF5A0]"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-3 h-3 stroke-[#5BF5A0]"><polyline points="18 15 12 9 6 15"/></svg>{Math.abs(diffMin)} min faster</span>
-              if (diffMin > 0) return <span className="flex items-center gap-1 text-xs font-bold text-[#ff6b6b]"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-3 h-3 stroke-[#ff6b6b]"><polyline points="6 9 12 15 18 9"/></svg>{diffMin} min slower</span>
-              return <span className="text-xs font-bold text-[#555]">Same ({Math.floor(progression.curDuration/60)} min)</span>
+              if (diffMin < 0) return <span className="flex items-center gap-1 text-sm font-bold text-[#5BF5A0]"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-3 h-3 stroke-[#5BF5A0]"><polyline points="18 15 12 9 6 15"/></svg>{Math.abs(diffMin)} min faster</span>
+              if (diffMin > 0) return <span className="flex items-center gap-1 text-sm font-bold text-[#ff6b6b]"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-3 h-3 stroke-[#ff6b6b]"><polyline points="6 9 12 15 18 9"/></svg>{diffMin} min slower</span>
+              return <span className="text-sm font-bold text-[#555]">Same ({Math.floor(progression.curDuration/60)} min)</span>
             })()}
           </div>
           )}
           <div className="flex items-center justify-between py-1.5">
-            <span className="text-xs text-[#aaa]">Sets completed</span>
+            <span className="text-sm text-[#aaa]">Sets completed</span>
             {(() => {
               const diff = progression.curSetCount - progression.prevSetCount
-              if (diff > 0) return <span className="flex items-center gap-1 text-xs font-bold text-[#5BF5A0]"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-3 h-3 stroke-[#5BF5A0]"><polyline points="18 15 12 9 6 15"/></svg>+{diff} sets</span>
-              if (diff < 0) return <span className="flex items-center gap-1 text-xs font-bold text-[#ff6b6b]"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-3 h-3 stroke-[#ff6b6b]"><polyline points="6 9 12 15 18 9"/></svg>{diff} sets</span>
-              return <span className="text-xs font-bold text-[#555]">Same ({progression.curSetCount})</span>
+              if (diff > 0) return <span className="flex items-center gap-1 text-sm font-bold text-[#5BF5A0]"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-3 h-3 stroke-[#5BF5A0]"><polyline points="18 15 12 9 6 15"/></svg>+{diff} sets</span>
+              if (diff < 0) return <span className="flex items-center gap-1 text-sm font-bold text-[#ff6b6b]"><svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="w-3 h-3 stroke-[#ff6b6b]"><polyline points="6 9 12 15 18 9"/></svg>{diff} sets</span>
+              return <span className="text-sm font-bold text-[#555]">Same ({progression.curSetCount})</span>
             })()}
           </div>
         </>) : (
-          <div className="text-xs text-[#666] italic">{templateName ? `Shown after ${templateName} has been used twice` : 'Will show when you start using templates'}</div>
+          <div className="text-sm text-[#666] italic">{templateName ? `Shown after ${templateName} has been used twice` : 'Will show when you start using templates'}</div>
         )}
       </div>
 
@@ -1058,7 +1058,7 @@ function WorkoutCompleteScreen({ data, weekDays, weekStreak, onDone, formatDurat
       <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-4 mb-3 flex items-center gap-4">
         <div className="text-center shrink-0">
           <div className="text-[28px] font-extrabold text-[#5BF5A0]">{weekWorkouts}</div>
-          <div className="text-[8px] font-bold text-[#555] uppercase tracking-wider">This week</div>
+          <div className="text-xs font-bold text-[#555] uppercase tracking-wider">This week</div>
         </div>
         <div className="flex-1">
           <div className="flex gap-1.5 mb-1.5">
@@ -1068,7 +1068,7 @@ function WorkoutCompleteScreen({ data, weekDays, weekStreak, onDone, formatDurat
           </div>
           <div className="flex gap-1.5">
             {weekDays.map((d, i) => (
-              <span key={i} className={`w-[28px] text-center text-[7px] font-semibold ${weekStreak[i]?.isToday ? 'text-[#7B7BFF]' : 'text-[#444]'}`}>{d}</span>
+              <span key={i} className={`w-[28px] text-center text-xs font-semibold ${weekStreak[i]?.isToday ? 'text-[#7B7BFF]' : 'text-[#444]'}`}>{d}</span>
             ))}
           </div>
         </div>
@@ -1077,10 +1077,10 @@ function WorkoutCompleteScreen({ data, weekDays, weekStreak, onDone, formatDurat
       {/* Suggested next */}
       {suggestedNext && (
         <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-4 mb-4">
-          <div className="text-[11px] font-bold text-[#777] uppercase tracking-wider mb-2">Suggested next</div>
+          <div className="text-sm font-bold text-[#777] uppercase tracking-wider mb-2">Suggested next</div>
           <div className="flex justify-between items-center">
-            <span className="text-[15px] font-bold">{suggestedNext.template.name}</span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide bg-[#5BF5A0]/10 text-[#5BF5A0]">Up next</span>
+            <span className="text-lg font-bold">{suggestedNext.template.name}</span>
+            <span className="text-xs font-bold px-2 py-0.5 rounded-md uppercase tracking-wide bg-[#5BF5A0]/10 text-[#5BF5A0]">Up next</span>
           </div>
           <div className="flex flex-wrap gap-1 mt-2">
             <MusclePills exercises={suggestedNext.template.exercises} getExerciseFromLibrary={getExerciseFromLibrary} />
@@ -1105,16 +1105,16 @@ function SaveTemplateModal({ folders, onSave, onCancel }) {
       <div className="w-full max-w-md bg-[#13132A] rounded-t-3xl p-6 pb-10">
         <h2 className="text-lg font-bold text-center mb-5">Save as template</h2>
         <div className="mb-4">
-          <div className="text-xs text-[#777] font-semibold uppercase tracking-wide mb-2">Template name</div>
+          <div className="text-sm text-[#777] font-semibold uppercase tracking-wide mb-2">Template name</div>
           <input type="text" placeholder="e.g. Push Day A" value={templateName} onChange={(e) => setTemplateName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSave()} autoFocus className="w-full bg-[#1C1C38] border border-[#2A2A4A] rounded-xl px-4 py-3 text-white placeholder-[#3a3a55] outline-none focus:border-[#7B7BFF] transition-colors" />
         </div>
         <div className="mb-5">
-          <div className="text-xs text-[#777] font-semibold uppercase tracking-wide mb-2">Save to folder</div>
+          <div className="text-sm text-[#777] font-semibold uppercase tracking-wide mb-2">Save to folder</div>
           <div className="flex flex-col gap-1.5">
             {folders.map((f, i) => (
               <button key={i} onClick={() => setSelectedFolder(i)} className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-left transition-all ${selectedFolder === i ? 'bg-[#7B7BFF]/15 border border-[#7B7BFF]/40 text-white' : 'bg-[#1C1C38] border border-[#2A2A4A] text-[#888]'}`}>
                 <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={`w-4 h-4 shrink-0 ${selectedFolder === i ? 'stroke-[#7B7BFF] fill-[#7B7BFF]/10' : 'stroke-[#555]'}`}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                {f.name}<span className="text-[11px] text-[#777] ml-auto">{f.templates.length}</span>
+                {f.name}<span className="text-sm text-[#777] ml-auto">{f.templates.length}</span>
               </button>
             ))}
           </div>
