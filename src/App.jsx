@@ -101,6 +101,7 @@ function App() {
   const [editingFolder, setEditingFolder] = useState(null)
   const [editingFolderName, setEditingFolderName] = useState('')
   const [showSaveModal, setShowSaveModal] = useState(false)
+  const [showSaveAsRoutineModal, setShowSaveAsRoutineModal] = useState(false)
   const [deletingFolder, setDeletingFolder] = useState(null)
   const [deletingTemplate, setDeletingTemplate] = useState(null)
   const [editingTemplate, setEditingTemplate] = useState(null)
@@ -129,6 +130,9 @@ function App() {
   const [showDeleteProgrammeConfirm, setShowDeleteProgrammeConfirm] = useState(null)
   const [showSetActiveAfterCreate, setShowSetActiveAfterCreate] = useState(null)
   const [showSetActiveAfterEditProgramme, setShowSetActiveAfterEditProgramme] = useState(null)
+  const [dragRoutine, setDragRoutine] = useState(null) // { rtnId, progId }
+  const [dragOverTarget, setDragOverTarget] = useState(null) // { type: 'index', progId, index } | { type: 'programme', progId } | null
+  const [selectedStartRoutineId, setSelectedStartRoutineId] = useState(null) // which routine is selected on Start (null = Up Next)
   const [showActiveWorkoutSheet, setShowActiveWorkoutSheet] = useState(false)
   const [createProgrammeName, setCreateProgrammeName] = useState('')
   const [createProgrammeType, setCreateProgrammeType] = useState('rotation')
@@ -140,11 +144,13 @@ function App() {
   const [routineEditorRestForIndex, setRoutineEditorRestForIndex] = useState(null)
   const [routineEditorNoteForIndex, setRoutineEditorNoteForIndex] = useState(null)
   const [focusNewExerciseAt, setFocusNewExerciseAt] = useState(null)
+  const [focusWorkoutFirstFieldAt, setFocusWorkoutFirstFieldAt] = useState(null) // exIndex to focus first set first field after adding
   const restStartRef = useRef(null)
   const routineEditorFirstInputRef = useRef(null)
   const currentRoutineIdRef = useRef(null)
 
   useEffect(() => { const t = setTimeout(() => setShowSplash(false), 1500); return () => clearTimeout(t) }, [])
+  useEffect(() => { if (page === 'library') setPage('workout') }, [page])
   useEffect(() => { localStorage.setItem('exercises', JSON.stringify(exercises)) }, [exercises])
   useEffect(() => { localStorage.setItem('history', JSON.stringify(history)) }, [history])
   useEffect(() => { localStorage.setItem('folders', JSON.stringify(folders)) }, [folders])
@@ -180,6 +186,22 @@ function App() {
   }, [focusNewExerciseAt])
 
   useEffect(() => {
+    if (focusWorkoutFirstFieldAt === null || focusWorkoutFirstFieldAt >= exercises.length) return
+    const ex = exercises[focusWorkoutFirstFieldAt]
+    const type = ex?.type || 'weight_reps'
+    let field = 'kg'
+    if (type === 'reps_only') field = 'reps'
+    else if (type === 'time_only') field = 'time'
+    else if (type === 'distance_time') field = 'distance'
+    const t = setTimeout(() => {
+      const input = document.querySelector(`[data-ex="${focusWorkoutFirstFieldAt}"][data-set="0"][data-field="${field}"]`)
+      if (input) input.focus()
+      setFocusWorkoutFirstFieldAt(null)
+    }, 100)
+    return () => clearTimeout(t)
+  }, [focusWorkoutFirstFieldAt, exercises])
+
+  useEffect(() => {
     if (programmes.length > 0) return
     const foldersRaw = localStorage.getItem('folders')
     const foldersData = foldersRaw ? JSON.parse(foldersRaw) : [{ name: 'My Templates', open: true, templates: [] }]
@@ -202,7 +224,7 @@ function App() {
       setRoutines(newRoutines)
       setProgrammes([{
         id: progId,
-        name: firstFolder.name || 'My First Programme',
+        name: firstFolder.name || 'My New Program 1',
         type: 'rotation',
         routineIds,
         isActive: true,
@@ -213,7 +235,7 @@ function App() {
       setRoutines([{ id: rtnId, name: 'New Routine', programmeId: progId, exercises: [] }])
       setProgrammes([{
         id: progId,
-        name: 'My First Programme',
+        name: 'My New Program 1',
         type: 'rotation',
         routineIds: [rtnId],
         isActive: true,
@@ -298,6 +320,22 @@ function App() {
   }
 
   const activeProgramme = programmes.find(p => p.isActive) || null
+
+  function getDaysSinceRoutine(rtnId) {
+    const withRoutine = history.filter(w => w.routineId === rtnId)
+    if (withRoutine.length === 0) return null
+    const parseDate = (w) => {
+      const parts = (w.date || '').split('/')
+      if (parts.length !== 3) return 0
+      return new Date(parts[2], parts[1] - 1, parts[0]).getTime()
+    }
+    const latest = withRoutine.sort((a, b) => parseDate(b) - parseDate(a))[0]
+    const parts = (latest.date || '').split('/')
+    if (parts.length !== 3) return null
+    const d = new Date(parts[2], parts[1] - 1, parts[0])
+    const now = new Date(); now.setHours(0, 0, 0, 0); d.setHours(0, 0, 0, 0)
+    return Math.floor((now - d) / (1000 * 60 * 60 * 24))
+  }
 
   function getNextRoutine(programme, workoutHistory) {
     if (!programme?.routineIds?.length) return null
@@ -406,6 +444,7 @@ function App() {
     const newRoutine = { id: rtnId, name: routineData.name || 'New Routine', programmeId: progId, exercises: routineData.exercises || [] }
     setRoutines(prev => [...prev, newRoutine])
     setProgrammes(prev => prev.map(p => p.id === progId ? { ...p, routineIds: [...(p.routineIds || []), rtnId] } : p))
+    return rtnId
   }
 
   function saveRoutineEdits(rtnId, name, exercises) {
@@ -429,6 +468,55 @@ function App() {
     const ids = [...prog.routineIds]
     ;[ids[idx], ids[next]] = [ids[next], ids[idx]]
     setProgrammes(prev => prev.map(p => p.id === progId ? { ...p, routineIds: ids } : p))
+  }
+
+  function moveRoutineToIndex(progId, rtnId, toIndex) {
+    const prog = programmes.find(p => p.id === progId)
+    if (!prog?.routineIds?.length) return
+    const ids = [...(prog.routineIds || [])]
+    const fromIdx = ids.indexOf(rtnId)
+    if (fromIdx < 0 || toIndex < 0 || toIndex >= ids.length) return
+    ids.splice(fromIdx, 1)
+    ids.splice(toIndex, 0, rtnId)
+    setProgrammes(prev => prev.map(p => p.id === progId ? { ...p, routineIds: ids } : p))
+  }
+
+  function moveRoutineToProgramme(rtnId, fromProgId, toProgId) {
+    if (fromProgId === toProgId) return
+    setProgrammes(prev => prev.map(p => {
+      if (p.id === fromProgId) return { ...p, routineIds: (p.routineIds || []).filter(id => id !== rtnId) }
+      if (p.id === toProgId) return { ...p, routineIds: [...(p.routineIds || []), rtnId] }
+      return p
+    }))
+    setRoutines(prev => prev.map(r => r.id === rtnId ? { ...r, programmeId: toProgId } : r))
+  }
+
+  function copyProgramme(progId) {
+    const prog = programmes.find(p => p.id === progId)
+    if (!prog) return
+    const ts = Date.now()
+    const newProgId = 'prog_' + ts
+    const newRoutines = []
+    const newRoutineIds = []
+    for (const rtnId of prog.routineIds || []) {
+      const r = routines.find(x => x.id === rtnId)
+      if (!r) continue
+      const newRtnId = 'rtn_' + ts + '_' + newRoutines.length
+      newRoutineIds.push(newRtnId)
+      newRoutines.push({ ...r, id: newRtnId, name: r.name || 'Routine', programmeId: newProgId, exercises: JSON.parse(JSON.stringify(r.exercises || [])) })
+    }
+    setRoutines(prev => [...prev, ...newRoutines])
+    setProgrammes(prev => [...prev.map(p => ({ ...p, isActive: false })), { id: newProgId, name: (prog.name || 'Programme') + ' (copy)', type: prog.type || 'rotation', routineIds: newRoutineIds, isActive: false, currentIndex: 0 }])
+    setProgrammeMenuProgramme(null)
+  }
+
+  function copyRoutine(rtnId, progId) {
+    const r = routines.find(x => x.id === rtnId)
+    if (!r) return
+    const ts = Date.now()
+    const newRtnId = 'rtn_' + ts
+    setRoutines(prev => [...prev, { ...r, id: newRtnId, name: (r.name || 'Routine') + ' (copy)', programmeId: progId, exercises: JSON.parse(JSON.stringify(r.exercises || [])) }])
+    setProgrammes(prev => prev.map(p => p.id === progId ? { ...p, routineIds: [...(p.routineIds || []), newRtnId] } : p))
   }
 
   // --- PR logic ---
@@ -537,11 +625,16 @@ function App() {
   }
 
   function addExercisesFromLibrary(exList) {
-    const newExs = exList.map(ex => ({
-      name: ex.name, type: ex.type || 'weight_reps', sets: [], restOverride: null, note: '',
-      muscle: ex.muscle, equipment: ex.equipment, movement: ex.movement
-    }))
+    const firstNewIndex = exercises.length
+    const newExs = exList.map(ex => {
+      const type = ex.type || 'weight_reps'
+      return {
+        name: ex.name, type, sets: [emptySetForType(type)], restOverride: null, note: '',
+        muscle: ex.muscle, equipment: ex.equipment, movement: ex.movement
+      }
+    })
     setExercises([...exercises, ...newExs])
+    setFocusWorkoutFirstFieldAt(firstNewIndex)
     setShowAddExercise(false)
   }
 
@@ -762,6 +855,36 @@ function App() {
     localStorage.removeItem('workoutStartTime')
   }
 
+  function confirmSaveAsRoutine(option, routineName) {
+    const converted = exercises.map(ex => {
+      const sets = ex.sets && ex.sets.length ? ex.sets : [{ reps: '8-10', kg: '' }]
+      return {
+        exerciseId: ex.name,
+        setConfigs: sets.map(s => ({ targetReps: String(s.reps ?? '') || '8-10', targetKg: String(s.kg ?? '') ?? '' })),
+        restOverride: ex.restOverride !== undefined ? ex.restOverride : null,
+        note: ex.note ?? ''
+      }
+    })
+    const routineData = { name: routineName || workoutName || 'New Routine', exercises: converted }
+    let progId
+    if (option.type === 'existing') {
+      progId = option.progId
+      const rtnId = addRoutineToProgramme(progId, routineData)
+      currentRoutineIdRef.current = rtnId
+    } else {
+      const ts = Date.now()
+      progId = 'prog_' + ts
+      const rtnId = 'rtn_' + ts
+      const newRoutine = { id: rtnId, name: routineData.name, programmeId: progId, exercises: routineData.exercises }
+      setRoutines(prev => [...prev, newRoutine])
+      setProgrammes(prev => [...prev, { id: progId, name: option.programmeName || `My New Program ${programmes.length + 1}`, type: 'rotation', routineIds: [rtnId], isActive: false, currentIndex: 0 }])
+      currentRoutineIdRef.current = rtnId
+    }
+    setShowSaveAsRoutineModal(false)
+    setShowSetActiveAfterCreate(progId)
+    confirmFinish(false)
+  }
+
   function getSuggestedNextFromTemplate(templateName) {
     if (!templateName) return getSuggestedNext()
     for (let fi = 0; fi < folders.length; fi++) {
@@ -938,7 +1061,7 @@ function App() {
               )}
 
               {/* Tab bar: Start | Plan */}
-              <div className="flex rounded-[10px] p-[3px] mb-1 border border-[#1e1e35] bg-[#111125]" style={{ marginTop: '12px', marginBottom: '4px' }}>
+              <div className="flex rounded-[10px] p-[3px] mt-3 mb-5 border border-[#1e1e35] bg-[#111125]">
                 <button onClick={() => setWorkoutTab('start')} className={`flex-1 py-2 text-center rounded-lg text-[11px] font-bold transition-all ${workoutTab === 'start' ? 'bg-[#7B7BFF] text-white shadow-[0_2px_8px_rgba(123,123,255,.25)]' : 'text-[#555]'}`}>Start</button>
                 <button onClick={() => setWorkoutTab('plan')} className={`flex-1 py-2 text-center rounded-lg text-[11px] font-bold transition-all ${workoutTab === 'plan' ? 'bg-[#7B7BFF] text-white shadow-[0_2px_8px_rgba(123,123,255,.25)]' : 'text-[#555]'}`}>Plan</button>
               </div>
@@ -959,7 +1082,7 @@ function App() {
                 if (showAsNoProgramme) {
                   return (
                     <>
-                      <div className="rounded-2xl border border-[#232340] bg-[#13132A] p-6 text-center mb-4">
+                      <div className="rounded-2xl border border-[#232340] bg-[#13132A] p-6 text-center mb-5">
                         <div className="w-12 h-12 rounded-full bg-[#1C1C38] flex items-center justify-center mx-auto mb-3 text-[#555]">
                           <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.5" strokeLinecap="round" className="w-6 h-6 stroke-current"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
                         </div>
@@ -981,15 +1104,18 @@ function App() {
 
                 const nextRtnId = getNextRoutine(activeProgramme, history)
                 const nextRtn = nextRtnId ? routines.find(r => r.id === nextRtnId) : null
-                const exCount = nextRtn?.exercises?.length ?? 0
-                const setCountR = nextRtn?.exercises?.reduce((s, e) => s + getSetConfigs(e).length, 0) ?? 0
-                const estMin = setCountR ? Math.round(setCountR * 2.5) : 0
                 const routineIds = activeProgramme.routineIds || []
                 const nextIdx = nextRtnId ? routineIds.indexOf(nextRtnId) : -1
+                const displayRtnId = (selectedStartRoutineId && routineIds.includes(selectedStartRoutineId)) ? selectedStartRoutineId : nextRtnId
+                const displayRtn = displayRtnId ? routines.find(r => r.id === displayRtnId) : null
+                const exCount = displayRtn?.exercises?.length ?? 0
+                const setCountR = displayRtn?.exercises?.reduce((s, e) => s + getSetConfigs(e).length, 0) ?? 0
+                const estMin = setCountR ? Math.round(setCountR * 2.5) : 0
+                const selectedIdx = displayRtnId ? routineIds.indexOf(displayRtnId) : -1
 
                 return (
                   <>
-                    <div className="text-[13px] font-bold text-[#888] mb-0.5">Active Programme</div>
+                    <div className="text-[13px] font-bold text-[#888] uppercase tracking-wider mb-0.5">Active Programme</div>
                     <div className="text-white text-[17px] font-bold mb-0.5">{activeProgramme.name}</div>
                     <div className="text-[11px] text-[#555] mb-3">{activeProgramme.type === 'weekly' ? 'Weekly' : 'Rotation'} · Day {nextIdx >= 0 ? nextIdx + 1 : 1} of {routineIds.length}</div>
                     <div className="flex gap-1.5 mb-1">
@@ -998,43 +1124,52 @@ function App() {
                         const currIdx = routineIds.indexOf(rtnId)
                         const isDone = nextIdx >= 0 && currIdx < nextIdx
                         const isUpNext = rtnId === nextRtnId
+                        const isSelected = rtnId === displayRtnId
+                        const daysSince = getDaysSinceRoutine(rtnId)
+                        const daysSinceText = daysSince === null ? '' : daysSince === 0 ? 'Today' : daysSince === 1 ? '1 day since' : `${daysSince} days since`
                         return (
-                          <div
+                          <button
                             key={rtnId}
-                            className={`flex-1 min-w-0 rounded-[10px] py-2.5 px-1.5 text-center border-[1.5px] ${isUpNext ? 'border-[#5BF5A0] bg-[rgba(91,245,160,0.04)]' : 'border-transparent bg-[#13132A]'}`}
-                            style={isDone ? { opacity: 0.4 } : {}}
+                            type="button"
+                            onClick={() => rtn && setSelectedStartRoutineId(rtnId)}
+                            className={`flex-1 min-w-0 rounded-[10px] py-2.5 px-1.5 text-center border-[1.5px] transition-colors ${isSelected ? 'border-[#5BF5A0] bg-[rgba(91,245,160,0.04)]' : 'border-transparent bg-[#13132A] hover:bg-[#1C1C38] hover:border-[#2A2A4A] active:opacity-90'}`}
+                            style={isDone && !isSelected ? { opacity: 0.8 } : {}}
                           >
-                            <div className={`text-[11px] font-semibold truncate ${isUpNext ? 'text-[#5BF5A0]' : isDone ? 'text-[#555] line-through' : 'text-[#888]'}`}>{rtn?.name || '—'}</div>
-                            <div className="text-[9px] text-[#444] mt-0.5">{isDone ? 'Done' : isUpNext ? 'Up Next' : `${rtn?.exercises?.length ?? 0} ex`}</div>
-                          </div>
+                            <div className={`text-[11px] font-semibold truncate ${isSelected ? 'text-[#5BF5A0]' : isDone ? 'text-[#7a7a9a]' : 'text-[#888]'}`}>{rtn?.name || '—'}</div>
+                            {daysSinceText ? <div className="text-[9px] text-[#444] mt-0.5">{daysSinceText}</div> : null}
+                          </button>
                         )
                       })}
                     </div>
                     <div className="flex gap-1.5 h-5 mb-0 items-stretch">
                       {routineIds.map((rtnId, i) => (
                         <div key={rtnId} className="flex-1 min-w-0 flex justify-center">
-                          {i === nextIdx ? (
+                          {i === selectedIdx ? (
                             <div className="w-[1.5px] h-full bg-[repeating-linear-gradient(to_bottom,rgba(91,245,160,0.5)_0px,rgba(91,245,160,0.5)_3px,transparent_3px,transparent_7px)]" />
                           ) : null}
                         </div>
                       ))}
                     </div>
-                    <div className="border-[1.5px] border-[rgba(91,245,160,0.2)] rounded-[14px] p-4 bg-[rgba(91,245,160,0.02)] mb-4">
+                    {displayRtn && (
+                    <div className="border-[1.5px] border-[rgba(91,245,160,0.2)] rounded-[14px] p-4 bg-[rgba(91,245,160,0.02)] mb-5">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-white text-[15px] font-bold">{nextRtn.name}</span>
-                        <span className="text-[8px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide bg-[rgba(91,245,160,0.1)] text-[#5BF5A0]">Up Next</span>
+                        <span className="text-white text-[15px] font-bold">{displayRtn.name}</span>
+                        {displayRtnId === nextRtnId && (
+                          <span className="text-[8px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide bg-[rgba(91,245,160,0.1)] text-[#5BF5A0] animate-up-next-pulse">Up Next</span>
+                        )}
                       </div>
-                      <div className="text-[11px] text-[#555] mb-2">{exCount} exercises · {setCountR} sets each · ~{estMin} min</div>
+                      <div className="text-[11px] text-[#555] mb-2">{exCount} exercises · {setCountR} sets · ~{estMin} min</div>
                       <div className="flex flex-wrap gap-1 mb-3">
-                        {(nextRtn.exercises || []).map((ex, i) => (
+                        {(displayRtn.exercises || []).map((ex, i) => (
                           <span key={i} className="text-[10px] font-semibold text-[#666] bg-white/5 px-2 py-0.5 rounded">{ex.exerciseId}</span>
                         ))}
                       </div>
-                      <button type="button" onClick={() => tryStart('routine', nextRtn)} className="w-full py-3.5 mt-3 border-2 border-[#5BF5A0] rounded-xl bg-[rgba(91,245,160,0.05)] text-[#5BF5A0] text-sm font-bold flex items-center justify-center gap-1.5">
-                        <PlayIcon className="w-3.5 h-3.5" /> Start {nextRtn.name}
+                      <button type="button" onClick={() => tryStart('routine', displayRtn)} className="w-full py-3.5 mt-3 border-2 border-[#5BF5A0] rounded-xl bg-[rgba(91,245,160,0.05)] text-[#5BF5A0] text-sm font-bold flex items-center justify-center gap-1.5">
+                        <PlayIcon className="w-3.5 h-3.5" /> Start {displayRtn.name}
                       </button>
                     </div>
-                    <button type="button" onClick={startEmpty} className="w-full py-4 px-4 mt-5 border-2 border-[rgba(123,123,255,0.4)] rounded-[14px] bg-[rgba(123,123,255,0.03)] flex items-center gap-3">
+                    )}
+                    <button type="button" onClick={startEmpty} className="w-full py-4 px-4 mt-0 border-2 border-[rgba(123,123,255,0.4)] rounded-[14px] bg-[rgba(123,123,255,0.03)] flex items-center gap-3">
                       <span className="w-[38px] h-[38px] rounded-[10px] bg-[rgba(123,123,255,0.06)] flex items-center justify-center text-[#7B7BFF] text-lg font-bold">+</span>
                       <div className="text-left">
                         <div className="text-white text-sm font-bold">Empty Workout</div>
@@ -1050,10 +1185,12 @@ function App() {
               {workoutTab === 'plan' && (
                 <div className="plan-tab">
                   {(() => {
-                    const programmesWithRoutines = programmes.filter((prog) => {
-                      const progRoutines = (prog.routineIds || []).map(id => routines.find(r => r.id === id)).filter(Boolean)
-                      return progRoutines.some(r => (r.exercises?.length ?? 0) > 0)
-                    })
+                    const programmesWithRoutines = programmes
+                      .filter((prog) => {
+                        const progRoutines = (prog.routineIds || []).map(id => routines.find(r => r.id === id)).filter(Boolean)
+                        return progRoutines.some(r => (r.exercises?.length ?? 0) > 0)
+                      })
+                      .sort((a, b) => (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0))
                     if (programmesWithRoutines.length === 0) {
                       return (
                         <>
@@ -1075,15 +1212,20 @@ function App() {
                     }
                     return (
                       <>
+                        <h2 className="text-[13px] font-bold text-[#888] uppercase tracking-wider mb-3">My Programmes</h2>
                         {programmesWithRoutines.map((prog) => {
                           const progRoutines = (prog.routineIds || []).map(id => routines.find(r => r.id === id)).filter(Boolean)
+                          const isActive = prog.isActive
                           return (
-                            <div key={prog.id}>
+                            <div
+                              key={prog.id}
+                              className={`rounded-[14px] p-4 mb-4 border ${isActive ? 'border-[1.5px] border-[rgba(91,245,160,0.2)] bg-[rgba(91,245,160,0.02)]' : 'border border-[#232340] bg-[#13132A]'}`}
+                            >
                               <div className="flex items-start justify-between gap-2 mb-1">
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <span className="text-white font-bold text-[17px]">{prog.name}</span>
-                                    {prog.isActive && <span className="text-[10px] font-semibold text-[#5BF5A0]">Active</span>}
+                                    {isActive && <span className="text-[8px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide bg-[rgba(91,245,160,0.1)] text-[#5BF5A0] animate-up-next-pulse">Active</span>}
                                   </div>
                                   <div className="text-[11px] text-[#555] mt-0.5">{progRoutines.length} routines · {prog.type === 'weekly' ? 'Weekly' : 'Rotation'}</div>
                                 </div>
@@ -1091,15 +1233,14 @@ function App() {
                                   <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="w-4 h-4 stroke-[#666]"><circle cx="12" cy="6" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="18" r="1.5"/></svg>
                                 </button>
                               </div>
-                              <div className="flex gap-1.5 mb-4">
+                              <div className="flex gap-1.5">
                                 {progRoutines.map((r) => (
-                                  <div key={r.id} className="flex-1 min-w-0 bg-[#13132A] rounded-[10px] py-2.5 px-1.5 text-center border border-transparent">
-                                    <div className="text-[11px] font-semibold text-[#888] truncate">{r.name}</div>
+                                  <div key={r.id} className={`flex-1 min-w-0 rounded-[10px] py-2.5 px-1.5 text-center border ${isActive ? 'border-[rgba(91,245,160,0.15)] bg-[rgba(91,245,160,0.04)]' : 'bg-[#1C1C38] border-[#2A2A4A]'}`}>
+                                    <div className={`text-[11px] font-semibold truncate ${isActive ? 'text-[#5BF5A0]' : 'text-[#888]'}`}>{r.name}</div>
                                     <div className="text-[9px] text-[#444] mt-0.5">{r.exercises?.length ?? 0} ex</div>
                                   </div>
                                 ))}
                               </div>
-                              <div className="h-px bg-[#1e1e35] mb-4" />
                             </div>
                           )
                         })}
@@ -1175,16 +1316,6 @@ function App() {
             </div>
           )}
 
-          {/* LIBRARY PAGE */}
-          {page === 'library' && (
-            <ExerciseLibrary
-              allExercises={allLibraryExercises}
-              mode="page"
-              onCreateCustom={() => { setEditingCustomExercise(null); setShowCreateExercise(true) }}
-              onEditExercise={(ex) => { setEditingCustomExercise(ex); setShowCreateExercise(true) }}
-            />
-          )}
-
           {/* PROFILE */}
           {page === 'profile' && (
             <div>
@@ -1248,9 +1379,19 @@ function App() {
         {/* Programme Menu (bottom sheet) */}
         {programmeMenuProgramme && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-[4px] z-20 flex items-end justify-center" onClick={() => setProgrammeMenuProgramme(null)}>
-            <div className="w-full max-w-md bg-[#13132A] rounded-t-[20px] pt-2 pb-9 px-4 max-h-[80%] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="w-full max-w-md bg-[#13132A] rounded-t-[20px] pt-2 pb-9 px-4 max-h-[95vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
               <div className="w-9 h-1 bg-[#2a2a45] rounded mx-auto mb-4" />
               <h2 className="text-white text-base font-bold mb-3">{programmeMenuProgramme.name}</h2>
+              <button type="button" onClick={() => setProgrammeActive(programmeMenuProgramme.id)} className="flex items-center gap-3 w-full py-3.5 px-3 rounded-[10px] mb-1 hover:bg-white/5">
+                <span className="w-9 h-9 rounded-lg bg-[rgba(91,245,160,0.06)] flex items-center justify-center shrink-0">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#5BF5A0" strokeWidth="2" strokeLinecap="round" className="w-4 h-4"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                </span>
+                <div className="text-left flex-1">
+                  <div className="text-white text-sm font-semibold">Set as Active</div>
+                  <div className="text-[#555] text-[11px] mt-0.5">Use this programme on Start tab</div>
+                </div>
+                <span className="text-[#333] text-base">›</span>
+              </button>
               <button type="button" onClick={() => openEditProgramme(programmeMenuProgramme.id)} className="flex items-center gap-3 w-full py-3.5 px-3 rounded-[10px] mb-1 hover:bg-white/5">
                 <span className="w-9 h-9 rounded-lg bg-[rgba(123,123,255,0.06)] flex items-center justify-center shrink-0">
                   <svg viewBox="0 0 24 24" fill="none" stroke="#7B7BFF" strokeWidth="2" strokeLinecap="round" className="w-4 h-4"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
@@ -1261,13 +1402,13 @@ function App() {
                 </div>
                 <span className="text-[#333] text-base">›</span>
               </button>
-              <button type="button" onClick={() => setProgrammeActive(programmeMenuProgramme.id)} className="flex items-center gap-3 w-full py-3.5 px-3 rounded-[10px] mb-1 hover:bg-white/5">
-                <span className="w-9 h-9 rounded-lg bg-[rgba(91,245,160,0.06)] flex items-center justify-center shrink-0">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="#5BF5A0" strokeWidth="2" strokeLinecap="round" className="w-4 h-4"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              <button type="button" onClick={() => copyProgramme(programmeMenuProgramme.id)} className="flex items-center gap-3 w-full py-3.5 px-3 rounded-[10px] mb-1 hover:bg-white/5">
+                <span className="w-9 h-9 rounded-lg bg-[#1C1C38] flex items-center justify-center shrink-0">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="w-4 h-4 text-[#888]"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                 </span>
                 <div className="text-left flex-1">
-                  <div className="text-white text-sm font-semibold">Set as Active</div>
-                  <div className="text-[#555] text-[11px] mt-0.5">Use this programme on Start tab</div>
+                  <div className="text-white text-sm font-semibold">Copy Programme</div>
+                  <div className="text-[#555] text-[11px] mt-0.5">Duplicate with all routines</div>
                 </div>
                 <span className="text-[#333] text-base">›</span>
               </button>
@@ -1348,7 +1489,7 @@ function App() {
         {/* Create Programme modal */}
         {showCreateProgramme && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-[4px] z-20 flex items-end justify-center" onClick={() => setShowCreateProgramme(false)}>
-            <div className="w-full max-w-md bg-[#13132A] rounded-t-[20px] pt-2 pb-9 px-4 max-h-[80%] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="w-full max-w-md bg-[#13132A] rounded-t-[20px] pt-2 pb-9 px-4 max-h-[95vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
               <div className="w-9 h-1 bg-[#2a2a45] rounded mx-auto mb-4" />
               <h2 className="text-white text-base font-bold mb-3">Create Programme</h2>
               <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider mt-3 mb-1.5">Name</label>
@@ -1377,9 +1518,10 @@ function App() {
         {editingProgrammeId && (() => {
           const prog = programmes.find(p => p.id === editingProgrammeId)
           const progRoutines = (prog?.routineIds || []).map(id => routines.find(r => r.id === id)).filter(Boolean)
+          const closeEditProgramme = () => { setEditingProgrammeId(null); setDragRoutine(null); setDragOverTarget(null) }
           return (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-[4px] z-20 flex items-end justify-center" onClick={() => setEditingProgrammeId(null)}>
-              <div className="w-full max-w-md bg-[#13132A] rounded-t-[20px] pt-2 pb-9 px-4 max-h-[80%] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-[4px] z-20 flex items-end justify-center" onClick={closeEditProgramme}>
+              <div className="w-full max-w-md bg-[#13132A] rounded-t-[20px] pt-2 pb-9 px-4 max-h-[95vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                 <div className="w-9 h-1 bg-[#2a2a45] rounded mx-auto mb-4" />
                 <h2 className="text-white text-base font-bold mb-3">Edit Programme</h2>
                 <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider mt-3 mb-1.5">Name</label>
@@ -1389,28 +1531,78 @@ function App() {
                   <button type="button" onClick={() => setEditProgrammeType('rotation')} className={`flex-1 py-2.5 rounded-lg text-center text-[11px] font-bold ${editProgrammeType === 'rotation' ? 'bg-[#7B7BFF] text-white' : 'bg-[#1C1C38] border border-[#2A2A4A] text-[#555]'}`}>Rotation</button>
                   <button type="button" onClick={() => setEditProgrammeType('weekly')} className={`flex-1 py-2.5 rounded-lg text-center text-[11px] font-bold ${editProgrammeType === 'weekly' ? 'bg-[#7B7BFF] text-white' : 'bg-[#1C1C38] border border-[#2A2A4A] text-[#555]'}`}>Weekly</button>
                 </div>
-                <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider mt-3 mb-1.5">Routines</label>
-                {progRoutines.map((r, i) => (
-                  <div key={r.id} className="flex justify-between items-center py-3 px-3 bg-[#1C1C38] rounded-[10px] border border-[#2A2A4A] mb-1.5">
-                    <span className="text-white text-sm font-semibold">{r.name}</span>
-                    <span className="text-[#555] text-xs">{r.exercises?.length ?? 0} exercises</span>
-                    <div className="flex items-center gap-2">
-                      <button type="button" onClick={() => { setEditRoutineName(r.name); setEditRoutineExercises(r.exercises || []); setEditingRoutineId(r.id); setEditingRoutineProgrammeId(editingProgrammeId); setEditingProgrammeId(null) }} className="text-[#7B7BFF] text-xs font-semibold">Edit</button>
-                      <button type="button" onClick={() => removeRoutineFromProgramme(editingProgrammeId, r.id)} className="text-[rgba(255,85,85,0.5)] p-1">✕</button>
-                      <button type="button" onClick={() => reorderRoutineInProgramme(editingProgrammeId, r.id, 'up')} disabled={i === 0} className="text-[#333] p-1 disabled:opacity-30">☰↑</button>
-                      <button type="button" onClick={() => reorderRoutineInProgramme(editingProgrammeId, r.id, 'down')} disabled={i === progRoutines.length - 1} className="text-[#333] p-1 disabled:opacity-30">☰↓</button>
+                <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider mt-3 mb-1.5">Routines — drag to reorder or move to another programme</label>
+                {progRoutines.map((r, i) => {
+                  const isDragging = dragRoutine?.rtnId === r.id
+                  const isDropTarget = dragOverTarget?.type === 'index' && dragOverTarget.progId === editingProgrammeId && dragOverTarget.index === i
+                  return (
+                    <div
+                      key={r.id}
+                      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (dragRoutine && dragRoutine.rtnId !== r.id) setDragOverTarget({ type: 'index', progId: editingProgrammeId, index: i }) }}
+                      onDragLeave={() => setDragOverTarget(prev => (prev?.type === 'index' && prev.progId === editingProgrammeId && prev.index === i ? null : prev))}
+                      onDrop={(e) => {
+                        e.preventDefault()
+                        try {
+                          const data = JSON.parse(e.dataTransfer.getData('application/json'))
+                          if (data.progId === editingProgrammeId) moveRoutineToIndex(editingProgrammeId, data.rtnId, i)
+                          setDragRoutine(null); setDragOverTarget(null)
+                        } catch (_) {}
+                      }}
+                      className={`flex justify-between items-center py-3 px-3 rounded-[10px] border mb-1.5 transition-colors ${isDragging ? 'opacity-50 bg-[#1C1C38] border-[#2A2A4A]' : isDropTarget ? 'bg-[#7B7BFF]/10 border-[#7B7BFF]/40' : 'bg-[#1C1C38] border-[#2A2A4A]'}`}
+                    >
+                      <span
+                        draggable
+                        onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('application/json', JSON.stringify({ rtnId: r.id, progId: editingProgrammeId })); setDragRoutine({ rtnId: r.id, progId: editingProgrammeId }) }}
+                        onDragEnd={() => { setDragRoutine(null); setDragOverTarget(null) }}
+                        className="text-[#888] mr-2 cursor-grab active:cursor-grabbing touch-none"
+                      >⋮⋮</span>
+                      <span className="text-white text-sm font-semibold flex-1 min-w-0 truncate">{r.name}</span>
+                      <span className="text-[#555] text-xs shrink-0">{r.exercises?.length ?? 0} ex</span>
+                      <div className="flex items-center gap-1 shrink-0 ml-2">
+                        <button type="button" onClick={() => { setEditRoutineName(r.name); setEditRoutineExercises(r.exercises || []); setEditingRoutineId(r.id); setEditingRoutineProgrammeId(editingProgrammeId); setEditingProgrammeId(null) }} className="text-[#7B7BFF] text-xs font-semibold px-1.5 py-0.5">Edit</button>
+                        <button type="button" onClick={() => copyRoutine(r.id, editingProgrammeId)} className="text-[#888] text-xs font-semibold px-1.5 py-0.5 hover:text-white" title="Copy routine">Copy</button>
+                        <button type="button" onClick={() => removeRoutineFromProgramme(editingProgrammeId, r.id)} className="text-[rgba(255,85,85,0.5)] p-1 hover:text-red-400">✕</button>
+                      </div>
+                    </div>
+                  )
+                })}
+                {dragRoutine && programmes.filter(p => p.id !== dragRoutine.progId).length > 0 && (
+                  <div className="mt-2 mb-2 p-2 rounded-lg bg-[#1C1C38] border border-[#2A2A4A]">
+                    <div className="text-[10px] font-semibold text-[#888] uppercase tracking-wider mb-2">Move to programme</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {programmes.filter(p => p.id !== dragRoutine.progId).map((p) => {
+                        const isTarget = dragOverTarget?.type === 'programme' && dragOverTarget.progId === p.id
+                        return (
+                          <div
+                            key={p.id}
+                            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverTarget({ type: 'programme', progId: p.id }) }}
+                            onDragLeave={() => setDragOverTarget(prev => (prev?.type === 'programme' && prev.progId === p.id ? null : prev))}
+                            onDrop={(e) => {
+                              e.preventDefault()
+                              try {
+                                const data = JSON.parse(e.dataTransfer.getData('application/json'))
+                                moveRoutineToProgramme(data.rtnId, data.progId, p.id)
+                                setDragRoutine(null); setDragOverTarget(null)
+                              } catch (_) {}
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${isTarget ? 'bg-[#7B7BFF]/20 text-[#7B7BFF] border border-[#7B7BFF]/40' : 'bg-[#0D0D1A] text-[#888] border border-[#2A2A4A] hover:border-[#7B7BFF]/40'}`}
+                          >
+                            {p.name}
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
-                ))}
+                )}
                 <button type="button" onClick={() => { setEditRoutineName('New Routine'); setEditRoutineExercises([]); setEditingRoutineId(null); setEditingRoutineProgrammeId(editingProgrammeId); setShowCreateRoutine(true); setEditingProgrammeId(null) }} className="w-full py-3 border border-dashed border-[#2A2A4A] rounded-xl text-[#7B7BFF] text-sm font-semibold mb-4">+ Add Routine</button>
                 <button type="button" onClick={() => {
                   const progId = editingProgrammeId
                   const programme = programmes.find(p => p.id === progId)
                   saveEditedProgramme(progId, editProgrammeName, editProgrammeType, prog?.routineIds || [])
-                  setEditingProgrammeId(null)
+                  setEditingProgrammeId(null); setDragRoutine(null); setDragOverTarget(null)
                   if (programme && !programme.isActive) setShowSetActiveAfterEditProgramme(progId)
                 }} className="w-full py-3.5 border-2 border-[#5BF5A0] rounded-xl bg-[rgba(91,245,160,0.05)] text-[#5BF5A0] text-sm font-bold">Save Changes</button>
-                <button type="button" onClick={() => setEditingProgrammeId(null)} className="w-full py-3 mt-2 text-[#666] text-xs font-semibold">Cancel</button>
+                <button type="button" onClick={closeEditProgramme} className="w-full py-3 mt-2 text-[#666] text-xs font-semibold">Cancel</button>
               </div>
             </div>
           )
@@ -1495,7 +1687,7 @@ function App() {
                         )}
                         {routineEditorRestForIndex === i && (
                           <div className="mt-2 mb-2 p-3 bg-[#1C1C38] rounded-xl border border-[#2A2A4A]">
-                            <div className="text-xs text-[#777] font-semibold uppercase tracking-wide mb-2">Rest for this exercise</div>
+                            <div className="text-[10px] font-semibold text-[#888] uppercase tracking-wider mb-2">Rest for this exercise</div>
                             <div className="flex gap-1.5 flex-wrap">
                               <button type="button" onClick={() => setRest(null)} className={`px-3 py-1.5 rounded-lg text-sm font-bold ${restOverride === null ? 'bg-[#7B7BFF] text-white' : 'bg-[#13132A] border border-[#2A2A4A] text-[#888]'}`}>Default</button>
                               {REST_PRESETS.map(s => <button key={s} type="button" onClick={() => setRest(s)} className={`px-3 py-1.5 rounded-lg text-sm font-bold ${restOverride === s ? 'bg-[#5BF5A0] text-[#0D0D1A]' : 'bg-[#13132A] border border-[#2A2A4A] text-[#888]'}`}>{s === 0 ? 'None' : formatTime(s)}</button>)}
@@ -1542,7 +1734,7 @@ function App() {
               allExercises={allLibraryExercises}
               mode="modal"
               onAdd={(exList) => {
-                const newExs = exList.map(e => ({ exerciseId: e.name, setConfigs: [{ targetReps: '8-10', targetKg: '' }], restOverride: null, note: '' }))
+                const newExs = exList.map(e => ({ exerciseId: e.name, setConfigs: [{ targetReps: '', targetKg: '' }], restOverride: null, note: '' }))
                 const startIndex = editRoutineExercises.length
                 setEditRoutineExercises(prev => [...(prev || []), ...newExs])
                 setFocusNewExerciseAt(startIndex)
@@ -1599,9 +1791,9 @@ function App() {
                 <button onClick={() => confirmFinish(true)} className="w-full py-4 bg-gradient-to-r from-[#7B7BFF] to-[#6060DD] rounded-2xl font-bold text-sm mb-3 shadow-lg shadow-[#7B7BFF]/25">Save & update all templates</button>
                 <button onClick={() => confirmFinish(false)} className="w-full py-3 border border-[#2A2A4A] rounded-2xl text-sm font-semibold text-[#888] mb-3">Save without updating templates</button>
               </>) : (<>
-                <p className="text-sm text-[#777] text-center mb-6">Save this workout as a reusable template?</p>
-                <button onClick={() => { setShowFinishModal(false); setShowSaveModal(true) }} className="w-full py-4 bg-gradient-to-r from-[#7B7BFF] to-[#6060DD] rounded-2xl font-bold text-sm mb-3 shadow-lg shadow-[#7B7BFF]/25">Save as template</button>
-                <button onClick={() => confirmFinish(false)} className="w-full py-3 border border-[#2A2A4A] rounded-2xl text-sm font-semibold text-[#888] mb-3">Save without template</button>
+                <p className="text-sm text-[#777] text-center mb-6">Save this workout as a routine in a programme?</p>
+                <button onClick={() => { setShowFinishModal(false); setShowSaveAsRoutineModal(true) }} className="w-full py-4 bg-gradient-to-r from-[#7B7BFF] to-[#6060DD] rounded-2xl font-bold text-sm mb-3 shadow-lg shadow-[#7B7BFF]/25">Save as routine</button>
+                <button onClick={() => confirmFinish(false)} className="w-full py-3 border border-[#2A2A4A] rounded-2xl text-sm font-semibold text-[#888] mb-3">Save without adding to programme</button>
               </>)}
               <button onClick={() => setShowFinishModal(false)} className="w-full py-3 text-sm font-semibold text-[#777]">Cancel</button>
             </div>
@@ -1646,6 +1838,15 @@ function App() {
         )}
 
         {showSaveModal && <SaveTemplateModal folders={folders} onSave={confirmSaveTemplate} onCancel={() => setShowSaveModal(false)} />}
+        {showSaveAsRoutineModal && (
+          <SaveAsRoutineModal
+            programmes={programmes}
+            defaultNewProgrammeName={`My New Program ${programmes.length + 1}`}
+            defaultRoutineName={workoutName}
+            onSave={confirmSaveAsRoutine}
+            onCancel={() => { setShowSaveAsRoutineModal(false); setShowFinishModal(true) }}
+          />
+        )}
 
         {/* INCOMPLETE SETS WARNING */}
         {incompleteSetsWarning && (
@@ -1664,7 +1865,6 @@ function App() {
         <div className="fixed bottom-0 left-0 right-0 bg-[#0D0D1A]/95 backdrop-blur-xl border-t border-[#1a1a30] px-4 py-3 pb-8 flex justify-around max-w-md mx-auto">
           <button onClick={() => setPage('progress')} className={`flex flex-col items-center gap-1 ${page === 'progress' ? 'opacity-100' : 'opacity-40'}`}><svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className={`w-5 h-5 ${page === 'progress' ? 'stroke-[#7B7BFF]' : 'stroke-white'}`}><path d="M18 20V10M12 20V4M6 20v-6"/></svg><span className={`text-xs font-semibold ${page === 'progress' ? 'text-[#7B7BFF]' : 'text-white'}`}>Progress</span></button>
           <button onClick={() => { setPage('workout'); if (showCompleteScreen) {} }} className={`flex flex-col items-center gap-1 ${page === 'workout' ? 'opacity-100' : 'opacity-40'}`}><svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className={`w-5 h-5 ${page === 'workout' ? 'stroke-[#7B7BFF]' : 'stroke-white'}`}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span className={`text-xs font-semibold ${page === 'workout' ? 'text-[#7B7BFF]' : 'text-white'}`}>Workout</span></button>
-          <button onClick={() => setPage('library')} className={`flex flex-col items-center gap-1 ${page === 'library' ? 'opacity-100' : 'opacity-40'}`}><svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`w-5 h-5 ${page === 'library' ? 'stroke-[#7B7BFF]' : 'stroke-white'}`}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span className={`text-xs font-semibold ${page === 'library' ? 'text-[#7B7BFF]' : 'text-white'}`}>Exercises</span></button>
           <button onClick={() => setPage('profile')} className={`flex flex-col items-center gap-1 ${page === 'profile' ? 'opacity-100' : 'opacity-40'}`}><svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className={`w-5 h-5 ${page === 'profile' ? 'stroke-[#7B7BFF]' : 'stroke-white'}`}><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg><span className={`text-xs font-semibold ${page === 'profile' ? 'text-[#7B7BFF]' : 'text-white'}`}>Profile</span></button>
         </div>
       </div>
@@ -1813,11 +2013,11 @@ function SaveTemplateModal({ folders, onSave, onCancel }) {
       <div className="w-full max-w-md bg-[#13132A] rounded-t-3xl p-6 pb-10">
         <h2 className="text-lg font-bold text-center mb-5">Save as template</h2>
         <div className="mb-4">
-          <div className="text-sm text-[#777] font-semibold uppercase tracking-wide mb-2">Template name</div>
+          <div className="text-[10px] font-semibold text-[#888] uppercase tracking-wider mb-2">Template name</div>
           <input type="text" placeholder="e.g. Push Day A" value={templateName} onChange={(e) => setTemplateName(e.target.value)} onFocus={e => e.target.select()} onKeyDown={(e) => e.key === 'Enter' && handleSave()} autoFocus className="w-full bg-[#1C1C38] border border-[#2A2A4A] rounded-xl px-4 py-3 text-white placeholder-[#3a3a55] outline-none focus:border-[#7B7BFF] transition-colors" />
         </div>
         <div className="mb-5">
-          <div className="text-sm text-[#777] font-semibold uppercase tracking-wide mb-2">Save to folder</div>
+          <div className="text-[10px] font-semibold text-[#888] uppercase tracking-wider mb-2">Save to folder</div>
           <div className="flex flex-col gap-1.5">
             {folders.map((f, i) => (
               <button key={i} onClick={() => setSelectedFolder(i)} className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-left transition-all ${selectedFolder === i ? 'bg-[#7B7BFF]/15 border border-[#7B7BFF]/40 text-white' : 'bg-[#1C1C38] border border-[#2A2A4A] text-[#888]'}`}>
@@ -1829,6 +2029,53 @@ function SaveTemplateModal({ folders, onSave, onCancel }) {
         </div>
         <button onClick={handleSave} className={`w-full py-4 rounded-2xl font-bold text-sm mb-3 transition-all ${templateName ? 'bg-gradient-to-r from-[#7B7BFF] to-[#6060DD] shadow-lg shadow-[#7B7BFF]/25' : 'bg-[#1C1C38] text-[#555]'}`} disabled={!templateName}>Save template</button>
         <button onClick={onCancel} className="w-full py-3 text-sm font-semibold text-[#777]">Cancel</button>
+      </div>
+    </div>
+  )
+}
+
+function SaveAsRoutineModal({ programmes, defaultNewProgrammeName, defaultRoutineName, onSave, onCancel }) {
+  const [mode, setMode] = useState(programmes.length > 0 ? 'existing' : 'new') // 'existing' | 'new'
+  const [selectedProgId, setSelectedProgId] = useState(programmes[0]?.id || null)
+  const [newProgrammeName, setNewProgrammeName] = useState(defaultNewProgrammeName || '')
+  const [routineName, setRoutineName] = useState(defaultRoutineName || '')
+  const canSave = routineName.trim() && (mode === 'existing' ? selectedProgId : newProgrammeName.trim())
+  function handleSave() {
+    if (!canSave) return
+    if (mode === 'existing') onSave({ type: 'existing', progId: selectedProgId }, routineName.trim())
+    else onSave({ type: 'new', programmeName: newProgrammeName.trim() }, routineName.trim())
+  }
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end justify-center z-50">
+      <div className="w-full max-w-md bg-[#13132A] rounded-t-3xl p-6 pb-10 max-h-[95vh] overflow-y-auto">
+        <h2 className="text-lg font-bold text-center mb-5">Save as routine</h2>
+        <div className="mb-4">
+          <div className="text-[10px] font-semibold text-[#888] uppercase tracking-wider mb-2">Programme</div>
+          {programmes.length > 0 && (
+            <div className="flex flex-col gap-1.5 mb-3">
+              {programmes.map((p) => (
+                <button key={p.id} type="button" onClick={() => { setMode('existing'); setSelectedProgId(p.id) }} className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-left transition-all ${mode === 'existing' && selectedProgId === p.id ? 'bg-[#7B7BFF]/15 border border-[#7B7BFF]/40 text-white' : 'bg-[#1C1C38] border border-[#2A2A4A] text-[#888]'}`}>
+                  <span className="truncate">{p.name}</span>
+                  <span className="text-sm text-[#777] ml-auto">{(p.routineIds || []).length}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => setMode('new')} className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all flex-1 ${mode === 'new' ? 'bg-[#7B7BFF]/15 border border-[#7B7BFF]/40 text-white' : 'bg-[#1C1C38] border border-[#2A2A4A] text-[#888]'}`}>
+              <span>Create new programme</span>
+            </button>
+          </div>
+          {mode === 'new' && (
+            <input type="text" placeholder="e.g. My New Program 1" value={newProgrammeName} onChange={(e) => setNewProgrammeName(e.target.value)} onFocus={e => e.target.select()} className="mt-2 w-full bg-[#1C1C38] border border-[#2A2A4A] rounded-xl px-4 py-3 text-white placeholder-[#3a3a55] outline-none focus:border-[#7B7BFF] transition-colors" />
+          )}
+        </div>
+        <div className="mb-5">
+          <div className="text-[10px] font-semibold text-[#888] uppercase tracking-wider mb-2">Routine name</div>
+          <input type="text" placeholder="e.g. Push Day A" value={routineName} onChange={(e) => setRoutineName(e.target.value)} onFocus={e => e.target.select()} onKeyDown={(e) => e.key === 'Enter' && handleSave()} className="w-full bg-[#1C1C38] border border-[#2A2A4A] rounded-xl px-4 py-3 text-white placeholder-[#3a3a55] outline-none focus:border-[#7B7BFF] transition-colors" />
+        </div>
+        <button onClick={handleSave} className={`w-full py-4 rounded-2xl font-bold text-sm mb-3 transition-all ${canSave ? 'bg-gradient-to-r from-[#7B7BFF] to-[#6060DD] shadow-lg shadow-[#7B7BFF]/25' : 'bg-[#1C1C38] text-[#555]'}`} disabled={!canSave}>Save routine</button>
+        <button type="button" onClick={onCancel} className="w-full py-3 text-sm font-semibold text-[#777]">Cancel</button>
       </div>
     </div>
   )

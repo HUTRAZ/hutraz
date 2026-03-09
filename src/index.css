@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+@keyframes up-next-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.animate-up-next-pulse {
+  animation: up-next-pulse 2.5s ease-in-out infinite;
+}
+
 html, body {
   overflow-x: hidden;
   width: 100%;
