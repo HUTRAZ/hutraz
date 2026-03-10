@@ -1457,7 +1457,10 @@ function App() {
               </div>
               <div className="bg-[#13132A] border border-[#232340] rounded-2xl p-5">
                 <h3 className="text-sm font-semibold text-[#7B7BFF] uppercase tracking-wide mb-4">About</h3>
-                <div className="text-sm text-[#777]"><div className="mb-1">REPLIQE v1.1</div><div>Simple tracking. Real progress.</div></div>
+                <div className="text-sm text-[#777]">
+                  <div className="mb-1">REPLIQE v1.4</div>
+                  <div>Simple tracking. Real progress.</div>
+                </div>
               </div>
             </div>
           )}
