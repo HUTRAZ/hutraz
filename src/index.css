@@ -319,6 +319,12 @@ input[type="number"]::-webkit-outer-spin-button {
   margin: 0;
 }
 
+/* Suppress Safari/WebKit invalid input underlines and glows on iOS */
+input:invalid {
+  box-shadow: none;
+  outline: none;
+}
+
 /* ========== Theme selector (Profile → Appearance) ========== */
 .settings-label {
   color: var(--text-secondary);
@@ -412,4 +418,17 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .theme-preview-bone .tp-block.short {
   width: 70%;
+}
+
+/* Start tab: dotted connector line from day pills to routine details (theme-aware) */
+.routine-connector-line {
+  width: 1.5px;
+  height: 100%;
+  background: repeating-linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--accent-secondary) 55%, transparent) 0px,
+    color-mix(in srgb, var(--accent-secondary) 55%, transparent) 3px,
+    transparent 3px,
+    transparent 7px
+  );
 }

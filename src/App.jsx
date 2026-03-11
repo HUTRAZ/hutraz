@@ -1327,7 +1327,7 @@ function App() {
                       {routineIds.map((rtnId, i) => (
                         <div key={rtnId} className="flex-1 min-w-0 flex justify-center">
                           {i === selectedIdx ? (
-                            <div className="w-[1.5px] h-full bg-[repeating-linear-gradient(to_bottom,rgba(91,245,160,0.5)_0px,rgba(91,245,160,0.5)_3px,transparent_3px,transparent_7px)]" />
+                            <div className="routine-connector-line" />
                           ) : null}
                         </div>
                       ))}
@@ -1474,7 +1474,7 @@ function App() {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <button type="button" onClick={() => setShowActiveWorkoutSheet(false)} className="text-muted-mid p-1.5 rounded-lg hover:bg-white/5" aria-label="Minimize">▼</button>
-                      <button type="button" onClick={() => setShowCancelWorkoutConfirm(true)} className="text-sm font-semibold text-muted-mid border border-border-strong px-3 py-1.5 rounded-lg hover:border-red-500/50 hover:text-red-400 transition-colors">Cancel</button>
+                      <button type="button" onClick={finishWorkout} className="text-sm font-bold text-on-accent bg-accent px-3 py-1.5 rounded-lg shadow-accent/25">Finish</button>
                     </div>
                   </div>
                   {activeRest && showStickyRestBar && (
@@ -1504,7 +1504,7 @@ function App() {
                           className="w-full bg-transparent border-b border-accent/30 text-sm font-bold text-text outline-none focus:border-accent transition-colors pb-1" />
                       </div>
                       <div className="flex gap-2 shrink-0">
-                        <button onClick={saveEditedTemplate} className="px-3 py-1.5 bg-accent rounded-lg text-sm font-bold">Save</button>
+                        <button onClick={saveEditedTemplate} className="px-3 py-1.5 bg-accent text-on-accent rounded-lg text-sm font-bold">Save</button>
                         <button onClick={cancelEditTemplate} className="px-3 py-1.5 border border-border-strong rounded-lg text-sm font-semibold text-muted">Cancel</button>
                       </div>
                     </div>
@@ -1527,7 +1527,7 @@ function App() {
 
                   {exercises.length > 0 && !editingTemplate && (
                     <div className="flex flex-col gap-3 mt-2 mb-8">
-                      <button onClick={finishWorkout} className="w-full py-4 bg-gradient-to-r from-accent to-accent-end rounded-2xl font-bold text-base shadow-lg shadow-accent/25 hover:translate-y-[-1px] active:translate-y-[1px] transition-transform">Finish workout</button>
+                      <button type="button" onClick={() => setShowCancelWorkoutConfirm(true)} className="w-full py-3 border-2 border-border-strong rounded-2xl text-sm font-semibold text-muted hover:border-red-500/50 hover:text-red-400 transition-colors">Cancel</button>
                     </div>
                   )}
                 </div>
@@ -1909,7 +1909,7 @@ function App() {
                         {routineEditorNoteForIndex === i && (
                           <div className="mt-2 flex gap-2 mb-2">
                             <input type="text" placeholder="Add a note..." value={note} onChange={(e) => updateNote(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && setRoutineEditorNoteForIndex(null)} autoFocus className="flex-1 bg-card-alt border border-border-strong rounded-lg px-3 py-2 text-sm text-text placeholder-muted-deep outline-none focus:border-accent" />
-                            <button type="button" onClick={() => setRoutineEditorNoteForIndex(null)} className="px-3 py-2 bg-accent rounded-lg text-sm font-bold">Done</button>
+                            <button type="button" onClick={() => setRoutineEditorNoteForIndex(null)} className="px-3 py-2 bg-accent text-on-accent rounded-lg text-sm font-bold">Done</button>
                           </div>
                         )}
                         {note && routineEditorNoteForIndex !== i && (
@@ -2006,7 +2006,7 @@ function App() {
             <div className="w-full max-w-md bg-card rounded-t-3xl p-6 pb-10">
               <h2 className="text-lg font-bold text-center mb-5">Name your workout</h2>
               <input type="text" placeholder="e.g. Push Day, Upper Body..." value={emptyWorkoutName} onChange={(e) => setEmptyWorkoutName(e.target.value)} onFocus={e => e.target.select()} onKeyDown={(e) => e.key === 'Enter' && confirmEmptyStart()} autoFocus className="w-full bg-card-alt border border-border-strong rounded-xl px-4 py-3 text-text placeholder-muted-deep outline-none focus:border-accent transition-colors mb-4" />
-              <button onClick={confirmEmptyStart} className={`w-full py-4 rounded-2xl font-bold text-sm mb-3 transition-all ${emptyWorkoutName ? 'bg-gradient-to-r from-accent to-accent-end shadow-lg shadow-accent/25' : 'bg-card-alt text-muted-strong'}`} disabled={!emptyWorkoutName}>Start workout</button>
+              <button onClick={confirmEmptyStart} className={`w-full py-4 rounded-2xl font-bold text-sm mb-3 transition-all ${emptyWorkoutName ? 'bg-gradient-to-r from-accent to-accent-end text-on-accent shadow-lg shadow-accent/25' : 'bg-card-alt text-muted-strong'}`} disabled={!emptyWorkoutName}>Start workout</button>
               <button onClick={() => setShowEmptyNameModal(false)} className="w-full py-3 text-sm font-semibold text-muted-mid">Cancel</button>
             </div>
           </div>
@@ -2018,15 +2018,15 @@ function App() {
               <h2 className="text-lg font-bold text-center mb-2">Finish workout</h2>
               {isRoutineBased() ? (<>
                 <p className="text-sm text-muted-mid text-center mb-6">Update this routine in your programme with today's sets and reps?</p>
-                <button onClick={() => confirmFinish(true)} className="w-full py-4 bg-gradient-to-r from-accent to-accent-end rounded-2xl font-bold text-sm mb-3 shadow-lg shadow-accent/25">Save & update routine</button>
+                <button onClick={() => confirmFinish(true)} className="w-full py-4 bg-gradient-to-r from-accent to-accent-end text-on-accent rounded-2xl font-bold text-sm mb-3 shadow-lg shadow-accent/25">Save & update routine</button>
                 <button onClick={() => confirmFinish(false)} className="w-full py-3 border border-border-strong rounded-2xl text-sm font-semibold text-muted mb-3">Save without updating routine</button>
               </>) : isTemplateBased() ? (<>
                 <p className="text-sm text-muted-mid text-center mb-6">Update templates with today's values?</p>
-                <button onClick={() => confirmFinish(true)} className="w-full py-4 bg-gradient-to-r from-accent to-accent-end rounded-2xl font-bold text-sm mb-3 shadow-lg shadow-accent/25">Save & update all templates</button>
+                <button onClick={() => confirmFinish(true)} className="w-full py-4 bg-gradient-to-r from-accent to-accent-end text-on-accent rounded-2xl font-bold text-sm mb-3 shadow-lg shadow-accent/25">Save & update all templates</button>
                 <button onClick={() => confirmFinish(false)} className="w-full py-3 border border-border-strong rounded-2xl text-sm font-semibold text-muted mb-3">Save without updating templates</button>
               </>) : (<>
                 <p className="text-sm text-muted-mid text-center mb-6">Save this workout as a routine in a programme?</p>
-                <button onClick={() => { setShowFinishModal(false); setShowSaveAsRoutineModal(true) }} className="w-full py-4 bg-gradient-to-r from-accent to-accent-end rounded-2xl font-bold text-sm mb-3 shadow-lg shadow-accent/25">Save as routine</button>
+                <button onClick={() => { setShowFinishModal(false); setShowSaveAsRoutineModal(true) }} className="w-full py-4 bg-gradient-to-r from-accent to-accent-end text-on-accent rounded-2xl font-bold text-sm mb-3 shadow-lg shadow-accent/25">Save as routine</button>
                 <button onClick={() => confirmFinish(false)} className="w-full py-3 border border-border-strong rounded-2xl text-sm font-semibold text-muted mb-3">Save without adding to programme</button>
               </>)}
               <button onClick={() => setShowFinishModal(false)} className="w-full py-3 text-sm font-semibold text-muted-mid">Cancel</button>
@@ -2114,7 +2114,7 @@ function App() {
                   ? 'You have not marked any sets as done. This workout will be saved without completed sets.'
                   : <>You completed <span className="font-bold text-text">{incompleteSetsWarning.done} of {incompleteSetsWarning.total}</span> sets. Incomplete sets won&apos;t be saved.</>}
               </p>
-              <button onClick={() => { setIncompleteSetsWarning(null); setShowFinishModal(true) }} className="w-full py-3 bg-gradient-to-r from-accent to-accent-end rounded-xl font-bold text-sm mb-2 shadow-lg shadow-accent/25">Finish anyway</button>
+              <button onClick={() => { setIncompleteSetsWarning(null); setShowFinishModal(true) }} className="w-full py-3 bg-gradient-to-r from-accent to-accent-end text-on-accent rounded-xl font-bold text-sm mb-2 shadow-lg shadow-accent/25">Finish anyway</button>
               <button onClick={() => setIncompleteSetsWarning(null)} className="w-full py-3 text-sm font-semibold text-muted-mid">Continue workout</button>
             </div>
           </div>
@@ -2256,7 +2256,7 @@ function WorkoutCompleteScreen({ data, weekDays, weekStreak, onDone, formatDurat
       )}
 
       {/* Done */}
-      <button onClick={onDone} className="w-full py-4 bg-gradient-to-r from-accent to-accent-end rounded-2xl font-bold text-base shadow-lg shadow-accent/25 hover:translate-y-[-1px] active:translate-y-[1px] transition-transform mb-8">
+      <button onClick={onDone} className="w-full py-4 bg-gradient-to-r from-accent to-accent-end text-on-accent rounded-2xl font-bold text-base shadow-lg shadow-accent/25 hover:translate-y-[-1px] active:translate-y-[1px] transition-transform mb-8">
         Done
       </button>
     </div>
@@ -2286,7 +2286,7 @@ function SaveTemplateModal({ folders, onSave, onCancel }) {
             ))}
           </div>
         </div>
-        <button onClick={handleSave} className={`w-full py-4 rounded-2xl font-bold text-sm mb-3 transition-all ${templateName ? 'bg-gradient-to-r from-accent to-accent-end shadow-lg shadow-accent/25' : 'bg-card-alt text-muted-strong'}`} disabled={!templateName}>Save template</button>
+        <button onClick={handleSave} className={`w-full py-4 rounded-2xl font-bold text-sm mb-3 transition-all ${templateName ? 'bg-gradient-to-r from-accent to-accent-end text-on-accent shadow-lg shadow-accent/25' : 'bg-card-alt text-muted-strong'}`} disabled={!templateName}>Save template</button>
         <button onClick={onCancel} className="w-full py-3 text-sm font-semibold text-muted-mid">Cancel</button>
       </div>
     </div>
@@ -2363,7 +2363,7 @@ function SaveAsRoutineModal({ programmes, newProgrammePlaceholder, defaultRoutin
             {mode === 'existing' ? 'Udfyld rutinenavn for at kunne gemme.' : 'Udfyld programnavn og rutinenavn for at kunne gemme.'}
           </p>
         )}
-        <button onClick={handleSave} className={`w-full py-4 rounded-2xl font-bold text-sm mb-3 transition-all ${canSave ? 'bg-gradient-to-r from-accent to-accent-end shadow-lg shadow-accent/25' : 'bg-card-alt text-muted-strong'}`} disabled={!canSave}>Save routine</button>
+        <button onClick={handleSave} className={`w-full py-4 rounded-2xl font-bold text-sm mb-3 transition-all ${canSave ? 'bg-gradient-to-r from-accent to-accent-end text-on-accent shadow-lg shadow-accent/25' : 'bg-card-alt text-muted-strong'}`} disabled={!canSave}>Save routine</button>
         <button type="button" onClick={onCancel} className="w-full py-3 text-sm font-semibold text-muted-mid">Cancel</button>
       </div>
     </div>

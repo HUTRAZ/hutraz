@@ -125,7 +125,7 @@ export default function CreateExerciseModal({ onSave, onCancel, onDelete, editEx
 
         {/* Save */}
         <button onClick={handleSave}
-          className={`w-full py-4 rounded-2xl font-bold text-sm mb-3 transition-all ${canSave ? 'bg-gradient-to-r from-accent to-accent-end shadow-lg shadow-accent/25 text-text' : 'bg-card-alt text-muted-strong'}`}
+          className={`w-full py-4 rounded-2xl font-bold text-sm mb-3 transition-all ${canSave ? 'bg-gradient-to-r from-accent to-accent-end text-on-accent shadow-lg shadow-accent/25' : 'bg-card-alt text-muted-strong'}`}
           disabled={!canSave}>
           {isEditing ? 'Save changes' : 'Create exercise'}
         </button>

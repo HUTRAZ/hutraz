@@ -130,11 +130,11 @@ export default function ExerciseLibrary({ allExercises, mode = 'page', onAdd, on
                     </div>
                   </div>
                   {mode === 'modal' && (
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all ${isSelected ? 'bg-[#7B7BFF] border-[#7B7BFF]' : 'bg-[#1C1C38] border-[1.5px] border-[#2A2A4A]'}`}>
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all ${isSelected ? 'bg-accent border-accent' : 'bg-card-alt border-[1.5px] border-border-strong'}`}>
                       {isSelected ? (
-                        <svg viewBox="0 0 24 24" fill="none" strokeWidth="3" strokeLinecap="round" className="w-3.5 h-3.5 stroke-white"><polyline points="20 6 9 17 4 12"/></svg>
+                        <svg viewBox="0 0 24 24" fill="none" strokeWidth="3" strokeLinecap="round" className="w-3.5 h-3.5 stroke-on-accent"><polyline points="20 6 9 17 4 12"/></svg>
                       ) : (
-                        <span className="text-[#7B7BFF] text-base font-bold">+</span>
+                        <span className="text-accent text-base font-bold">+</span>
                       )}
                     </div>
                   )}
@@ -168,9 +168,9 @@ export default function ExerciseLibrary({ allExercises, mode = 'page', onAdd, on
           {/* Floating add bar */}
           {selected.length > 0 && (
             <div className="px-5 pb-8 pt-3 shrink-0 border-t border-border">
-              <button onClick={confirmAdd} className="w-full py-4 bg-gradient-to-r from-accent to-accent-end rounded-2xl font-bold text-sm shadow-lg shadow-accent/25 flex items-center justify-center gap-2">
+              <button onClick={confirmAdd} className="w-full py-4 bg-gradient-to-r from-accent to-accent-end text-on-accent rounded-2xl font-bold text-sm shadow-lg shadow-accent/25 flex items-center justify-center gap-2">
                 Add {selected.length} exercise{selected.length !== 1 ? 's' : ''}
-                <span className="bg-white/20 text-text text-sm font-extrabold px-2 py-0.5 rounded-md">{selected.length}</span>
+                <span className="bg-white/20 text-on-accent text-sm font-extrabold px-2 py-0.5 rounded-md">{selected.length}</span>
               </button>
             </div>
           )}
