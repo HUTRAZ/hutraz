@@ -87,12 +87,14 @@ export default function RecoverySection({ muscles, muscleLastWorked, dayName }) 
             transform="rotate(-90 52 52)"
             style={{ transition: 'none' }}
           />
-          <text x="52" y="48" textAnchor="middle" fill={RING_GREEN} fontSize="17" fontWeight="800" fontFamily="-apple-system, system-ui, sans-serif">
-            {display}%
-          </text>
-          <text x="52" y="56" textAnchor="middle" fill="rgba(255,255,255,0.28)" fontSize="7.5" fontWeight="700" fontFamily="-apple-system, system-ui, sans-serif" letterSpacing="0.8">
-            RECOVERY
-          </text>
+          <g transform="translate(52, 52)" textAnchor="middle">
+            <text y="-5.75" dominantBaseline="middle" fill={RING_GREEN} fontSize="17" fontWeight="800" fontFamily="-apple-system, system-ui, sans-serif">
+              {display}%
+            </text>
+            <text y="10.5" dominantBaseline="middle" fill="rgba(255,255,255,0.28)" fontSize="7.5" fontWeight="700" fontFamily="-apple-system, system-ui, sans-serif" letterSpacing="0.8">
+              RECOVERY
+            </text>
+          </g>
         </svg>
 
         <div style={{ gridColumn: '2 / 3' }} className="flex justify-center">

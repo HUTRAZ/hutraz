@@ -15,6 +15,28 @@ import RecoverySection from './RecoverySection'
 const REST_PRESETS = [0, 30, 60, 90, 120, 180]
 const WEEK_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
+// Default programme for testing: 2 Split Push/Pull (Day 1 Push 8×4, Day 2 Pull 8×4)
+function getDefault2SplitProgramme() {
+  const progId = 'prog_default_2split'
+  const rtnPushId = 'rtn_default_push'
+  const rtnPullId = 'rtn_default_pull'
+  const fourSets = Array.from({ length: 4 }, () => ({ targetReps: '8-10', targetKg: '' }))
+  const pushExercises = [
+    'Barbell Bench Press', 'Incline Dumbbell Press', 'Dumbbell Flyes', 'Machine Chest Press',
+    'Barbell Overhead Press', 'Dumbbell Shoulder Press', 'Lateral Raise', 'Tricep Pushdown'
+  ]
+  const pullExercises = [
+    'Barbell Row', 'Lat Pulldown', 'Seated Cable Row', 'Face Pull',
+    'Dumbbell Row', 'Pull-ups', 'Inverted Row', 'Barbell Curl'
+  ]
+  const routines = [
+    { id: rtnPushId, name: 'Day 1 Push', programmeId: progId, exercises: pushExercises.map(exerciseId => ({ exerciseId, setConfigs: fourSets, restOverride: null, rirOverride: null, note: '', supersetGroupId: null, supersetRole: null })) },
+    { id: rtnPullId, name: 'Day 2 Pull', programmeId: progId, exercises: pullExercises.map(exerciseId => ({ exerciseId, setConfigs: fourSets, restOverride: null, rirOverride: null, note: '', supersetGroupId: null, supersetRole: null })) }
+  ]
+  const programme = { id: progId, name: '2 Split Push/Pull', type: 'rotation', routineIds: [rtnPushId, rtnPullId], isActive: true, currentIndex: 0 }
+  return { programme, routines }
+}
+
 function PlayIcon({ className = 'w-3.5 h-3.5' }) {
   return <svg viewBox="0 0 24 24" className={`${className} fill-current`}><polygon points="5 3 19 12 5 21 5 3"/></svg>
 }
@@ -136,8 +158,11 @@ function App() {
   const [workoutTab, setWorkoutTab] = useState('start') // 'start' | 'plan'
   const [programmes, setProgrammes] = useState(() => {
     const s = localStorage.getItem('repliqe_programmes')
-    if (s) return JSON.parse(s)
-    return []
+    if (s) {
+      const parsed = JSON.parse(s)
+      if (parsed.length > 0) return parsed
+    }
+    return [getDefault2SplitProgramme().programme]
   })
   const [muscleLastWorked, setMuscleLastWorked] = useState(() => {
     try {
@@ -147,8 +172,11 @@ function App() {
   })
   const [routines, setRoutines] = useState(() => {
     const s = localStorage.getItem('repliqe_routines')
-    if (s) return JSON.parse(s)
-    return []
+    if (s) {
+      const parsed = JSON.parse(s)
+      if (parsed.length > 0) return parsed
+    }
+    return getDefault2SplitProgramme().routines
   })
   const [programmeMenuProgramme, setProgrammeMenuProgramme] = useState(null)
   const [showCreateProgramme, setShowCreateProgramme] = useState(false)
@@ -1199,10 +1227,12 @@ function App() {
       suggestedNext: nextSuggested
     })
 
-    // Update muscleLastWorked: primary always overwrites; secondary only if not set (so primary stimulus wins)
+    // Update muscleLastWorked only for exercises that had at least one set marked done (recovery counts completed work only)
     const now = new Date().toISOString()
     const nextMuscleLastWorked = { ...muscleLastWorked }
     for (const ex of exercises) {
+      const hasDoneSet = (ex.sets || []).some((s) => s.done)
+      if (!hasDoneSet) continue
       const lib = allLibraryExercises.find((e) => e.name === ex.name)
       const m = lib?.muscles
       if (m) {
