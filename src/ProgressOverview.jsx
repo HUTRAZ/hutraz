@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getTopMovers, calcLeanMass } from './progressUtils'
+import { getTopMovers } from './progressUtils'
 import { MUSCLE_COLOURS_HEX, getMuscleRecoveryPct, formatMuscleLabel } from './utils'
 import PhotosModal from './PhotosModal'
 import { loadPhotoSrc } from './PhotosModal'
@@ -12,6 +12,7 @@ export default function ProgressOverview({
   weekStreak,
   weightLog,
   bodyFatLog,
+  muscleMassLog,
   photoSessions,
   setPhotoSessions,
   unitWeight,
@@ -24,6 +25,7 @@ export default function ProgressOverview({
   const safeWeekStreak = Array.isArray(weekStreak) ? weekStreak : []
   const safeWeightLog = Array.isArray(weightLog) ? weightLog : []
   const safeBodyFatLog = Array.isArray(bodyFatLog) ? bodyFatLog : []
+  const safeMuscleMassLog = Array.isArray(muscleMassLog) ? muscleMassLog : []
   const safePhotoSessions = Array.isArray(photoSessions) ? photoSessions : []
   const safeMuscleLastWorked = muscleLastWorked && typeof muscleLastWorked === 'object' ? muscleLastWorked : {}
 
@@ -70,12 +72,8 @@ export default function ProgressOverview({
   const latestWeight = safeWeightLog.length > 0 ? safeWeightLog[safeWeightLog.length - 1] : null
   const firstWeight = safeWeightLog.length > 0 ? safeWeightLog[0] : null
   const latestBF = safeBodyFatLog.length > 0 ? safeBodyFatLog[safeBodyFatLog.length - 1] : null
-  const leanMass = latestWeight && latestBF ? calcLeanMass(latestWeight.value, latestBF.value) : null
-  const firstLeanMass = (() => {
-    if (!firstWeight || !safeBodyFatLog.length) return null
-    const firstBF = safeBodyFatLog[0]
-    return calcLeanMass(firstWeight.value, firstBF.value)
-  })()
+  const latestMuscleMass = safeMuscleMassLog.length > 0 ? safeMuscleMassLog[safeMuscleMassLog.length - 1] : null
+  const firstMuscleMass = safeMuscleMassLog.length > 0 ? safeMuscleMassLog[0] : null
 
   const OVERVIEW_MUSCLES = ['chest', 'back', 'quads', 'side-delts', 'biceps', 'triceps', 'glutes', 'abs']
   const CIRC = 2 * Math.PI * 14
@@ -120,7 +118,7 @@ export default function ProgressOverview({
         </>
       )}
 
-      {(latestWeight || leanMass) && (
+      {(latestWeight || latestMuscleMass) && (
         <>
           <div className="sec">Body</div>
           <div className="grid grid-cols-2 gap-2 mb-2">
@@ -134,12 +132,12 @@ export default function ProgressOverview({
                 invertDelta
               />
             )}
-            {leanMass && (
+            {latestMuscleMass && (
               <StatTile
-                val={leanMass}
+                val={latestMuscleMass.value}
                 unit={unitWeight}
                 label="Muscle mass"
-                delta={firstLeanMass ? leanMass - firstLeanMass : null}
+                delta={firstMuscleMass ? latestMuscleMass.value - firstMuscleMass.value : null}
                 deltaLabel="since start"
               />
             )}

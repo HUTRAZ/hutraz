@@ -190,8 +190,15 @@ export default function PhotosModal({
         resultType: CameraResultType.Base64,
         source: source === 'library' ? CameraSource.Photos : CameraSource.Camera,
       })
-      return photo.base64String ?? null
-    } catch {
+      const base64 = photo?.base64String ?? photo?.base64 ?? null
+      if (!base64) {
+        console.warn('Camera returned no base64:', Object.keys(photo || {}))
+        if (typeof alert !== 'undefined') alert('Photo had no image data. Try again.')
+      }
+      return base64
+    } catch (err) {
+      console.error('Camera error:', err)
+      if (typeof alert !== 'undefined') alert('Could not take photo. Try again.')
       return null
     }
   }
@@ -220,6 +227,21 @@ export default function PhotosModal({
     const updated = { ...capturedImages, _sessionId: sessionId, [angle.key]: filename }
     setCapturedImages(updated)
     setCaptureStep((prev) => prev + 1)
+    // Persist session immediately so photo shows even if user leaves before clicking Done
+    if (typeof setPhotoSessions === 'function') {
+      const today = new Date().toLocaleDateString('en-GB')
+      const partial = {
+        id: sessionId,
+        date: today,
+        front: updated.front ?? null,
+        back: updated.back ?? null,
+        side: updated.side ?? null,
+      }
+      setPhotoSessions((prev) => {
+        const without = (prev || []).filter((s) => s.id !== sessionId)
+        return [...without, partial]
+      })
+    }
   }
 
   async function handleCaptureAngle(source) {
@@ -236,17 +258,17 @@ export default function PhotosModal({
   }
 
   async function handleFileSelected(e) {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file?.type?.startsWith('image/')) return
-    setCapturing(true)
+    const file = e.target?.files?.[0]
+    if (!file || !file.type?.startsWith('image/')) return
     try {
       const base64 = await normalizeImage(file)
-      await saveAndAdvanceWithBase64(base64)
-    } catch {
-      // ignore
+      if (base64) await saveAndAdvanceWithBase64(base64)
+    } catch (err) {
+      console.error('Photo handleFileSelected failed:', err)
+      if (typeof alert !== 'undefined') alert('Could not add photo. Try again.')
+    } finally {
+      if (e.target) e.target.value = ''
     }
-    setCapturing(false)
   }
 
   function skipAngle() {
@@ -263,7 +285,10 @@ export default function PhotosModal({
       back: angles.back ?? null,
       side: angles.side ?? null,
     }
-    setPhotoSessions((prev) => [...prev, newSession])
+    setPhotoSessions((prev) => {
+      const without = (prev || []).filter((s) => s.id !== newSession.id)
+      return [...without, newSession]
+    })
     setCapturing(false)
     setCaptureStep(0)
     setCapturedImages({})
@@ -342,26 +367,6 @@ export default function PhotosModal({
           )}
         </div>
         <div className="px-6 pb-12 flex flex-col gap-3">
-          {/* Web: use label+input so click opens file picker reliably (no programmatic click) */}
-          <input
-            id="photos-camera-input"
-            ref={inputCameraRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="sr-only"
-            aria-hidden
-            onChange={handleFileSelected}
-          />
-          <input
-            id="photos-library-input"
-            ref={inputLibraryRef}
-            type="file"
-            accept="image/*"
-            className="sr-only"
-            aria-hidden
-            onChange={handleFileSelected}
-          />
           {isNative ? (
             <>
               <button
@@ -381,17 +386,33 @@ export default function PhotosModal({
             </>
           ) : (
             <>
-              <label
-                htmlFor="photos-camera-input"
-                className="w-full py-4 rounded-2xl font-bold text-sm bg-white text-black text-center cursor-pointer block"
-              >
-                Take {currentAngle.label} photo
+              {/* Web: label wraps input so click reliably opens file picker (Safari/Mac) */}
+              <label className="relative w-full block cursor-pointer">
+                <input
+                  ref={inputCameraRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleFileSelected}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  style={{ fontSize: 0 }}
+                />
+                <span className="block w-full py-4 rounded-2xl font-bold text-sm bg-white text-black text-center pointer-events-none">
+                  Take {currentAngle.label} photo
+                </span>
               </label>
-              <label
-                htmlFor="photos-library-input"
-                className="w-full py-4 rounded-2xl font-bold text-sm bg-white/90 text-black border border-white/50 text-center cursor-pointer block"
-              >
-                Choose from library
+              <label className="relative w-full block cursor-pointer">
+                <input
+                  ref={inputLibraryRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelected}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  style={{ fontSize: 0 }}
+                />
+                <span className="block w-full py-4 rounded-2xl font-bold text-sm bg-white/90 text-black border border-white/50 text-center pointer-events-none">
+                  Choose from library
+                </span>
               </label>
             </>
           )}

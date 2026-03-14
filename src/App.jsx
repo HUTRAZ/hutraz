@@ -262,6 +262,10 @@ function App() {
     const s = localStorage.getItem('repliqe_measurementsLog')
     return s ? JSON.parse(s) : []
   })
+  const [muscleMassLog, setMuscleMassLog] = useState(() => {
+    const s = localStorage.getItem('repliqe_muscleMassLog')
+    return s ? JSON.parse(s) : []
+  })
   const [photoSessions, setPhotoSessions] = useState(() => {
     const s = localStorage.getItem('repliqe_photoSessions')
     return s ? JSON.parse(s) : []
@@ -315,6 +319,7 @@ function App() {
   useEffect(() => { localStorage.setItem('repliqe_weightLog', JSON.stringify(weightLog)) }, [weightLog])
   useEffect(() => { localStorage.setItem('repliqe_bodyFatLog', JSON.stringify(bodyFatLog)) }, [bodyFatLog])
   useEffect(() => { localStorage.setItem('repliqe_measurementsLog', JSON.stringify(measurementsLog)) }, [measurementsLog])
+  useEffect(() => { localStorage.setItem('repliqe_muscleMassLog', JSON.stringify(muscleMassLog)) }, [muscleMassLog])
   useEffect(() => { localStorage.setItem('repliqe_photoSessions', JSON.stringify(photoSessions)) }, [photoSessions])
 
   useEffect(() => {
@@ -1544,6 +1549,8 @@ function App() {
                 setBodyFatLog={setBodyFatLog}
                 measurementsLog={measurementsLog ?? []}
                 setMeasurementsLog={setMeasurementsLog}
+                muscleMassLog={muscleMassLog ?? []}
+                setMuscleMassLog={setMuscleMassLog}
                 photoSessions={photoSessions ?? []}
                 setPhotoSessions={setPhotoSessions}
                 bodyweight={bodyweight}

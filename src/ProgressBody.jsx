@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { calcLeanMass } from './progressUtils'
 import PhotosModal from './PhotosModal'
 import { loadPhotoSrc } from './PhotosModal'
 
@@ -21,6 +20,8 @@ export default function ProgressBody({
   setWeightLog,
   bodyFatLog,
   setBodyFatLog,
+  muscleMassLog,
+  setMuscleMassLog,
   measurementsLog,
   setMeasurementsLog,
   photoSessions,
@@ -31,23 +32,26 @@ export default function ProgressBody({
   const [period, setPeriod] = useState('3M')
   const [showAddWeight, setShowAddWeight] = useState(false)
   const [showAddBF, setShowAddBF] = useState(false)
+  const [showAddMuscleMass, setShowAddMuscleMass] = useState(false)
   const [showAddMeasurements, setShowAddMeasurements] = useState(false)
   const [showPhotos, setShowPhotos] = useState(false)
   const [newWeight, setNewWeight] = useState('')
   const [newBF, setNewBF] = useState('')
+  const [newMuscleMass, setNewMuscleMass] = useState('')
   const [newMeasurements, setNewMeasurements] = useState({})
 
   const today = new Date().toLocaleDateString('en-GB')
 
   const safeWeightLog = Array.isArray(weightLog) ? weightLog : []
   const safeBodyFatLog = Array.isArray(bodyFatLog) ? bodyFatLog : []
+  const safeMuscleMassLog = Array.isArray(muscleMassLog) ? muscleMassLog : []
   const safeMeasurementsLog = Array.isArray(measurementsLog) ? measurementsLog : []
   const safePhotoSessions = Array.isArray(photoSessions) ? photoSessions : []
 
   const latestWeight = safeWeightLog.length > 0 ? safeWeightLog[safeWeightLog.length - 1] : null
   const firstWeight = safeWeightLog.length > 0 ? safeWeightLog[0] : null
   const latestBF = safeBodyFatLog.length > 0 ? safeBodyFatLog[safeBodyFatLog.length - 1] : null
-  const leanMass = latestWeight && latestBF ? calcLeanMass(latestWeight.value, latestBF.value) : null
+  const latestMuscleMass = safeMuscleMassLog.length > 0 ? safeMuscleMassLog[safeMuscleMassLog.length - 1] : null
 
   const totalPhotos = safePhotoSessions.reduce(
     (sum, s) => sum + [s.front, s.back, s.side].filter(Boolean).length,
@@ -89,6 +93,14 @@ export default function ProgressBody({
     setBodyFatLog((prev) => [...prev, { date: today, value: val }])
     setNewBF('')
     setShowAddBF(false)
+  }
+
+  function addMuscleMass() {
+    const val = parseFloat(newMuscleMass)
+    if (!val) return
+    setMuscleMassLog((prev) => [...prev, { date: today, value: val }])
+    setNewMuscleMass('')
+    setShowAddMuscleMass(false)
   }
 
   function openMeasurementsModal() {
@@ -207,10 +219,13 @@ export default function ProgressBody({
         </div>
         <div className="bg-card border border-border rounded-[14px] p-[13px_12px]">
           <div className="text-[20px] font-extrabold text-text">
-            {leanMass ?? '—'}
+            {latestMuscleMass ? latestMuscleMass.value : '—'}
             <span className="text-[10px] text-muted ml-0.5">{unitWeight}</span>
           </div>
           <div className="text-[9px] font-bold text-muted uppercase tracking-[0.5px] mt-1">Muscle mass</div>
+          <button onClick={() => setShowAddMuscleMass(true)} className="mt-2 text-[10px] text-accent font-semibold">
+            + Log
+          </button>
         </div>
       </div>
 
@@ -336,6 +351,17 @@ export default function ProgressBody({
           onChange={setNewBF}
           onConfirm={addBF}
           onCancel={() => setShowAddBF(false)}
+          keyboardType="decimal"
+        />
+      )}
+      {showAddMuscleMass && (
+        <QuickInputModal
+          title="Log muscle mass"
+          placeholder={`e.g. 68.5 ${unitWeight}`}
+          value={newMuscleMass}
+          onChange={setNewMuscleMass}
+          onConfirm={addMuscleMass}
+          onCancel={() => setShowAddMuscleMass(false)}
           keyboardType="decimal"
         />
       )}

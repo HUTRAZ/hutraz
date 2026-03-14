@@ -127,14 +127,6 @@ export function getLatestMeasurement(entries) {
 }
 
 /**
- * Lean mass estimate: weight × (1 - bodyFatPct / 100)
- */
-export function calcLeanMass(weightKg, bodyFatPct) {
-  if (!weightKg || !bodyFatPct) return null
-  return Math.round((weightKg * (1 - bodyFatPct / 100)) * 10) / 10
-}
-
-/**
  * Parse en-GB date string "dd/mm/yyyy" → Date
  */
 export function parseGBDate(str) {
