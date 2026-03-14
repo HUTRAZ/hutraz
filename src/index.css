@@ -333,6 +333,16 @@ input:focus:invalid {
   width: 70%;
 }
 
+/* Progress tab: section labels */
+.sec {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
 /* Start tab: solid 2px green connector from day selector to card */
 .routine-connector-line {
   width: 2px;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Component } from 'react'
 import ExerciseCard from './ExerciseCard'
 import ExerciseLibrary from './ExerciseLibraryUI'
 import CreateExerciseModal from './CreateExerciseModal'
@@ -11,6 +11,39 @@ import MuscleMapCard from './MuscleMapCard'
 import { getDayMuscles, getDayMusclesSlugs } from './utils'
 import { DEFAULT_EXERCISES, MUSCLE_GROUPS } from './exerciseLibrary'
 import RecoverySection from './RecoverySection'
+import RepliqeLogo from './RepliqeLogo'
+import ProgressScreen from './ProgressScreen'
+
+class ProgressErrorBoundary extends Component {
+  state = { error: null }
+  static getDerivedStateFromError(error) {
+    return { error }
+  }
+  componentDidCatch(error, info) {
+    console.error('Progress screen error:', error, info.componentStack)
+  }
+  render() {
+    if (this.state.error) {
+      const err = this.state.error
+      const message = err?.message || String(err)
+      return (
+        <div className="py-8 px-4 text-center">
+          <p className="text-sm font-semibold text-text mb-2">Something went wrong on Progress</p>
+          <p className="text-xs text-muted mb-2 break-all font-mono max-w-full">{message}</p>
+          <p className="text-xs text-muted mb-4">Check the browser console (F12) for full details.</p>
+          <button
+            type="button"
+            onClick={() => this.setState({ error: null })}
+            className="text-sm font-bold text-accent"
+          >
+            Try again
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 const REST_PRESETS = [0, 30, 60, 90, 120, 180]
 const WEEK_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -51,10 +84,6 @@ function getDefault2SplitProgramme() {
 
 function PlayIcon({ className = 'w-3.5 h-3.5' }) {
   return <svg viewBox="0 0 24 24" className={`${className} fill-current`}><polygon points="5 3 19 12 5 21 5 3"/></svg>
-}
-
-function RepliqeLogo({ size = 28 }) {
-  return <svg width={size} height={size} viewBox="0 0 100 100" className="shrink-0"><rect x="8" y="5" width="38" height="26" rx="8" fill="#7B7BFF" opacity="0.9"/><rect x="54" y="5" width="38" height="26" rx="8" fill="#7B7BFF" opacity="0.9"/><rect x="8" y="37" width="38" height="26" rx="8" fill="#7B7BFF" opacity="0.7"/><rect x="54" y="37" width="38" height="26" rx="8" fill="#7B7BFF" opacity="0.7"/><rect x="8" y="69" width="38" height="26" rx="8" fill="#7B7BFF" opacity="0.5"/><rect x="54" y="69" width="38" height="26" rx="8" fill="#5BF5A0" opacity="0.9"/></svg>
 }
 
 function HomeMuscleTag({ muscleId }) {
@@ -144,6 +173,7 @@ function App() {
   const [weekStart, setWeekStart] = useState(() => { const s = localStorage.getItem('weekStart'); return s ? Number(s) : 0 }) // 0=Monday
   const [unitWeight, setUnitWeight] = useState(() => localStorage.getItem('unitWeight') || 'kg')
   const [unitDistance, setUnitDistance] = useState(() => localStorage.getItem('unitDistance') || 'km')
+  const [unitLength, setUnitLength] = useState(() => localStorage.getItem('unitLength') || 'cm')
   const [showAddExercise, setShowAddExercise] = useState(false)
   const [showCreateExercise, setShowCreateExercise] = useState(false)
   const [editingCustomExercise, setEditingCustomExercise] = useState(null)
@@ -220,6 +250,22 @@ function App() {
     const t = localStorage.getItem('theme') || 'dark'
     return t === 'light-bone' ? 'bone' : t
   })
+  const [weightLog, setWeightLog] = useState(() => {
+    const s = localStorage.getItem('repliqe_weightLog')
+    return s ? JSON.parse(s) : []
+  })
+  const [bodyFatLog, setBodyFatLog] = useState(() => {
+    const s = localStorage.getItem('repliqe_bodyFatLog')
+    return s ? JSON.parse(s) : []
+  })
+  const [measurementsLog, setMeasurementsLog] = useState(() => {
+    const s = localStorage.getItem('repliqe_measurementsLog')
+    return s ? JSON.parse(s) : []
+  })
+  const [photoSessions, setPhotoSessions] = useState(() => {
+    const s = localStorage.getItem('repliqe_photoSessions')
+    return s ? JSON.parse(s) : []
+  })
   const setThemeAndApply = (t) => {
     setTheme(t)
     document.documentElement.setAttribute('data-theme', t)
@@ -263,8 +309,13 @@ function App() {
   useEffect(() => { localStorage.setItem('weekStart', String(weekStart)) }, [weekStart])
   useEffect(() => { localStorage.setItem('unitWeight', unitWeight) }, [unitWeight])
   useEffect(() => { localStorage.setItem('unitDistance', unitDistance) }, [unitDistance])
+  useEffect(() => { localStorage.setItem('unitLength', unitLength) }, [unitLength])
   useEffect(() => { localStorage.setItem('customExercises', JSON.stringify(customExercises)) }, [customExercises])
   useEffect(() => { localStorage.setItem('rirEnabled', rirEnabled ? 'true' : 'false') }, [rirEnabled])
+  useEffect(() => { localStorage.setItem('repliqe_weightLog', JSON.stringify(weightLog)) }, [weightLog])
+  useEffect(() => { localStorage.setItem('repliqe_bodyFatLog', JSON.stringify(bodyFatLog)) }, [bodyFatLog])
+  useEffect(() => { localStorage.setItem('repliqe_measurementsLog', JSON.stringify(measurementsLog)) }, [measurementsLog])
+  useEffect(() => { localStorage.setItem('repliqe_photoSessions', JSON.stringify(photoSessions)) }, [photoSessions])
 
   useEffect(() => {
     if (editingProgrammeId) {
@@ -828,7 +879,7 @@ function App() {
     for (let i = 0; i < 7; i++) {
       const d = new Date(weekStartDate); d.setDate(d.getDate() + i)
       const dateStr = d.toLocaleDateString('en-GB')
-      const worked = history.some(w => w.date === dateStr)
+      const worked = (history && Array.isArray(history) ? history : []).some(w => w.date === dateStr)
       const isToday = i === offset
       result.push({ worked, isToday })
     }
@@ -1481,32 +1532,28 @@ function App() {
 
           {/* PROGRESS */}
           {page === 'progress' && (
-            <div>
-              <div className="flex items-center gap-3 mb-6"><RepliqeLogo size={28} /><h1 className="text-3xl font-bold tracking-tight">Progress</h1></div>
-              <div className="bg-card border border-border rounded-2xl p-5 mb-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div><div className="text-3xl font-bold">{history.length}</div><div className="text-sm text-muted-mid">Workouts</div></div>
-                  <div><div className="text-3xl font-bold">{history.reduce((sum, w) => sum + w.exercises.reduce((s, ex) => s + (ex.sets || []).filter(set => set.done === true).length, 0), 0)}</div><div className="text-sm text-muted-mid">Sets logged</div></div>
-                </div>
-              </div>
-              {history.length > 0 ? (
-                <div>
-                  <h3 className="text-sm font-semibold text-accent uppercase tracking-wide mb-3">Recent workouts</h3>
-                  {history.slice(0, 10).map((w, i) => (
-                    <div key={i} className="bg-card border border-border rounded-xl p-4 mb-3">
-                      <div className="flex justify-between items-center mb-2"><span className="text-base font-bold">{w.name || w.date}</span><span className="text-sm text-muted-mid">{relativeTime(w.date)}</span></div>
-                      <div className="flex items-center gap-3 mb-2 text-sm text-muted-mid">{w.duration && <span>{formatDuration(w.duration)}</span>}<span>{w.exercises.reduce((s, ex) => s + (ex.sets || []).filter(set => set.done === true).length, 0)} sets</span></div>
-                      {w.exercises.map((ex, j) => <div key={j} className="text-sm text-muted-strong ml-1">{ex.name} — {(ex.sets || []).filter(set => set.done === true).length} sets</div>)}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="w-12 h-12 stroke-border-strong mx-auto mb-4"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
-                  <div className="text-muted-mid text-sm">No workouts yet</div>
-                </div>
-              )}
-            </div>
+            <ProgressErrorBoundary>
+              <ProgressScreen
+                history={history ?? []}
+                muscleLastWorked={muscleLastWorked ?? {}}
+                routines={routines ?? []}
+                programmes={programmes ?? []}
+                weightLog={weightLog ?? []}
+                setWeightLog={setWeightLog}
+                bodyFatLog={bodyFatLog ?? []}
+                setBodyFatLog={setBodyFatLog}
+                measurementsLog={measurementsLog ?? []}
+                setMeasurementsLog={setMeasurementsLog}
+                photoSessions={photoSessions ?? []}
+                setPhotoSessions={setPhotoSessions}
+                bodyweight={bodyweight}
+                weekStreak={getWeekStreak()}
+                weekDays={getWeekDays()}
+                unitWeight={unitWeight ?? 'kg'}
+                unitLength={unitLength ?? 'cm'}
+                allLibraryExercises={allLibraryExercises ?? []}
+              />
+            </ProgressErrorBoundary>
           )}
 
           {/* WORKOUT COMPLETE SCREEN */}
@@ -2017,6 +2064,13 @@ function App() {
                   </div>
                 </div>
                 <div className="mb-5">
+                  <div className="text-sm font-semibold mb-1">Length unit</div>
+                  <div className="text-sm text-muted-mid mb-3">Used for body measurements (chest, waist, etc.)</div>
+                  <div className="flex gap-2">
+                    {['cm', 'inch'].map(u => <button key={u} onClick={() => setUnitLength(u)} className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${unitLength === u ? 'bg-accent text-on-accent' : 'bg-card-alt border border-border-strong text-muted hover:border-accent'}`}>{u}</button>)}
+                  </div>
+                </div>
+                <div className="mb-5">
                   <div className="text-sm font-semibold mb-1">Rest timer</div>
                   <div className="text-sm text-muted-mid mb-3">Default rest duration between sets</div>
                   <div className="flex gap-2 flex-wrap">
@@ -2035,7 +2089,7 @@ function App() {
               <div className="bg-card border border-border rounded-2xl p-5">
                 <h3 className="text-sm font-semibold text-accent uppercase tracking-wide mb-4">About</h3>
                 <div className="text-sm text-muted-mid">
-                  <div className="mb-1">REPLIQE v1.4</div>
+                  <div className="mb-1">REPLIQE v1.7</div>
                   <div>Simple tracking. Real progress.</div>
                 </div>
               </div>

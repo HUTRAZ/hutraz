@@ -1,0 +1,457 @@
+import { useState, useEffect } from 'react'
+import { calcLeanMass } from './progressUtils'
+import PhotosModal from './PhotosModal'
+import { loadPhotoSrc } from './PhotosModal'
+
+const PERIODS = ['4W', '3M', '6M', '1Y', 'All']
+const MEASUREMENTS = [
+  { key: 'chest', label: 'Chest' },
+  { key: 'waist', label: 'Waist' },
+  { key: 'hips', label: 'Hips' },
+  { key: 'upperArm', label: 'Upper arm' },
+  { key: 'thigh', label: 'Thigh' },
+  { key: 'calf', label: 'Calf' },
+]
+const TOTAL_FREE_PHOTOS = 24
+
+const CM_PER_INCH = 2.54
+
+export default function ProgressBody({
+  weightLog,
+  setWeightLog,
+  bodyFatLog,
+  setBodyFatLog,
+  measurementsLog,
+  setMeasurementsLog,
+  photoSessions,
+  setPhotoSessions,
+  unitWeight,
+  unitLength = 'cm',
+}) {
+  const [period, setPeriod] = useState('3M')
+  const [showAddWeight, setShowAddWeight] = useState(false)
+  const [showAddBF, setShowAddBF] = useState(false)
+  const [showAddMeasurements, setShowAddMeasurements] = useState(false)
+  const [showPhotos, setShowPhotos] = useState(false)
+  const [newWeight, setNewWeight] = useState('')
+  const [newBF, setNewBF] = useState('')
+  const [newMeasurements, setNewMeasurements] = useState({})
+
+  const today = new Date().toLocaleDateString('en-GB')
+
+  const safeWeightLog = Array.isArray(weightLog) ? weightLog : []
+  const safeBodyFatLog = Array.isArray(bodyFatLog) ? bodyFatLog : []
+  const safeMeasurementsLog = Array.isArray(measurementsLog) ? measurementsLog : []
+  const safePhotoSessions = Array.isArray(photoSessions) ? photoSessions : []
+
+  const latestWeight = safeWeightLog.length > 0 ? safeWeightLog[safeWeightLog.length - 1] : null
+  const firstWeight = safeWeightLog.length > 0 ? safeWeightLog[0] : null
+  const latestBF = safeBodyFatLog.length > 0 ? safeBodyFatLog[safeBodyFatLog.length - 1] : null
+  const leanMass = latestWeight && latestBF ? calcLeanMass(latestWeight.value, latestBF.value) : null
+
+  const totalPhotos = safePhotoSessions.reduce(
+    (sum, s) => sum + [s.front, s.back, s.side].filter(Boolean).length,
+    0
+  )
+  const atLimit = totalPhotos >= TOTAL_FREE_PHOTOS
+
+  function filterLog(log) {
+    if (period === 'All') return log
+    const now = Date.now()
+    const MS = { '4W': 28, '3M': 90, '6M': 180, '1Y': 365 }[period] * 86400000
+    return log.filter((entry) => {
+      const parts = (entry.date || '').split('/')
+      if (parts.length !== 3) return false
+      const d = new Date(parts[2], parts[1] - 1, parts[0])
+      return now - d.getTime() <= MS
+    })
+  }
+
+  const weightPoints = filterLog(weightLog)
+  const weightMax = weightPoints.length ? Math.max(...weightPoints.map((p) => p.value)) : 0
+  const weightMin = weightPoints.length ? Math.min(...weightPoints.map((p) => p.value)) : 0
+  const weightRange = weightMax - weightMin || 1
+
+  const latestMeasurements = safeMeasurementsLog.length > 0 ? safeMeasurementsLog[safeMeasurementsLog.length - 1] : null
+  const firstMeasurements = safeMeasurementsLog.length > 0 ? safeMeasurementsLog[0] : null
+
+  function addWeight() {
+    const val = parseFloat(newWeight)
+    if (!val) return
+    setWeightLog((prev) => [...prev, { date: today, value: val }])
+    setNewWeight('')
+    setShowAddWeight(false)
+  }
+
+  function addBF() {
+    const val = parseFloat(newBF)
+    if (!val) return
+    setBodyFatLog((prev) => [...prev, { date: today, value: val }])
+    setNewBF('')
+    setShowAddBF(false)
+  }
+
+  function openMeasurementsModal() {
+    const latest = safeMeasurementsLog.length > 0 ? safeMeasurementsLog[safeMeasurementsLog.length - 1] : null
+    if (latest) {
+      const initial = {}
+      MEASUREMENTS.forEach(({ key }) => {
+        if (latest[key] != null && latest[key] !== undefined) {
+          const cm = Number(latest[key])
+          if (unitLength === 'inch') initial[key] = (cm / CM_PER_INCH).toFixed(1)
+          else initial[key] = String(cm)
+        }
+      })
+      setNewMeasurements(initial)
+    } else {
+      setNewMeasurements({})
+    }
+    setShowAddMeasurements(true)
+  }
+
+  function addMeasurements() {
+    const entry = { date: today }
+    const toCm = unitLength === 'inch' ? (v) => v * CM_PER_INCH : (v) => v
+    MEASUREMENTS.forEach(({ key }) => {
+      const v = parseFloat(newMeasurements[key])
+      if (v) entry[key] = Math.round(toCm(v) * 10) / 10
+    })
+    if (Object.keys(entry).length <= 1) return
+    setMeasurementsLog((prev) => [...prev, entry])
+    setNewMeasurements({})
+    setShowAddMeasurements(false)
+  }
+
+  return (
+    <div>
+      <div className="sec">Weight</div>
+      <div className="bg-card border border-border rounded-[14px] p-4 mb-2">
+        <div className="flex justify-between items-baseline mb-3">
+          <div className="text-[13px] font-bold text-text">
+            {latestWeight ? `${latestWeight.value} ${unitWeight}` : '—'}
+            <span className="text-[10px] text-muted font-normal ml-1">today</span>
+          </div>
+          {latestWeight && firstWeight && latestWeight !== firstWeight && (
+            <div
+              className={`text-[11px] font-bold ${
+                latestWeight.value < firstWeight.value ? 'text-success' : 'text-[#ff6b6b]'
+              }`}
+            >
+              {latestWeight.value < firstWeight.value ? '↓' : '↑'}&nbsp;
+              {Math.abs(latestWeight.value - firstWeight.value).toFixed(1)} {unitWeight}
+            </div>
+          )}
+        </div>
+
+        {weightPoints.length > 1 ? (
+          <>
+            <div className="flex items-end gap-1 h-[70px]">
+              {weightPoints.map((p, i) => {
+                const heightPct = 20 + ((weightMax - p.value) / weightRange) * 75
+                return (
+                  <div
+                    key={i}
+                    className="flex-1 rounded-t-[3px] min-w-0"
+                    style={{
+                      height: `${100 - heightPct}%`,
+                      background:
+                        i === weightPoints.length - 1
+                          ? '#5BF5A0'
+                          : `rgba(91,245,160,${0.15 + (i / weightPoints.length) * 0.7})`,
+                    }}
+                  />
+                )
+              })}
+            </div>
+            <div className="flex justify-between mt-1">
+              <span className="text-[8px] text-muted">{weightPoints[0]?.date}</span>
+              <span className="text-[8px] text-muted">{weightPoints[weightPoints.length - 1]?.date}</span>
+            </div>
+          </>
+        ) : (
+          <div className="text-sm text-muted italic">Log weight to see trend</div>
+        )}
+
+        <button
+          onClick={() => setShowAddWeight(true)}
+          className="mt-3 w-full py-2 border border-dashed border-border-strong rounded-[10px] text-[12px] font-semibold text-accent"
+        >
+          + Log today&apos;s weight
+        </button>
+      </div>
+
+      <div className="flex gap-[3px] bg-[rgba(255,255,255,0.03)] border border-border rounded-[10px] p-[3px] mb-4">
+        {PERIODS.map((p) => (
+          <button
+            key={p}
+            onClick={() => setPeriod(p)}
+            className={`flex-1 py-[6px] rounded-[7px] text-[10px] font-bold ${
+              period === p ? 'bg-[rgba(123,123,255,0.15)] text-accent' : 'text-muted'
+            }`}
+          >
+            {p}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        <div className="bg-card border border-border rounded-[14px] p-[13px_12px]">
+          <div className="text-[20px] font-extrabold text-text">
+            {latestBF ? latestBF.value : '—'}
+            <span className="text-[10px] text-muted ml-0.5">%</span>
+          </div>
+          <div className="text-[9px] font-bold text-muted uppercase tracking-[0.5px] mt-1">Body fat</div>
+          <button onClick={() => setShowAddBF(true)} className="mt-2 text-[10px] text-accent font-semibold">
+            + Log
+          </button>
+        </div>
+        <div className="bg-card border border-border rounded-[14px] p-[13px_12px]">
+          <div className="text-[20px] font-extrabold text-text">
+            {leanMass ?? '—'}
+            <span className="text-[10px] text-muted ml-0.5">{unitWeight}</span>
+          </div>
+          <div className="text-[9px] font-bold text-muted uppercase tracking-[0.5px] mt-1">Muscle mass</div>
+        </div>
+      </div>
+
+      <div className="bg-card border border-border rounded-[14px] p-4 mb-4 flex items-center justify-between">
+        <div>
+          <div className="text-[13px] font-bold text-text">Apple Health</div>
+          <div className="text-[10px] text-muted mt-0.5">Sync weight automatically</div>
+        </div>
+        <button
+          disabled
+          className="bg-card-alt border border-border-strong rounded-[8px] px-3 py-1.5 text-[11px] font-bold text-muted cursor-not-allowed"
+        >
+          Coming soon
+        </button>
+      </div>
+
+      <div className="sec">Measurements</div>
+      <div className="bg-card border border-border rounded-[14px] overflow-hidden mb-2">
+        {MEASUREMENTS.map(({ key, label }, i) => {
+          const latest = latestMeasurements?.[key]
+          const first = firstMeasurements?.[key]
+          const delta = latest && first && latest !== first ? latest - first : null
+          const display = (cm) => (unitLength === 'inch' ? (cm / CM_PER_INCH).toFixed(1) : cm.toFixed(1))
+          const unitLabel = unitLength === 'inch' ? 'inch' : 'cm'
+          return (
+            <div
+              key={key}
+              className={`flex items-center justify-between p-[11px_14px] ${
+                i < MEASUREMENTS.length - 1 ? 'border-b border-border' : ''
+              }`}
+            >
+              <span className="text-[13px] font-semibold text-text">{label}</span>
+              <div className="flex items-center gap-[10px]">
+                {delta != null && (
+                  <span className={`text-[10px] font-bold ${delta > 0 ? 'text-success' : 'text-[#ff6b6b]'}`}>
+                    {delta > 0 ? '↑' : '↓'} {display(Math.abs(delta))} {unitLabel}
+                  </span>
+                )}
+                <span className="text-[13px] font-extrabold text-text">{latest ? `${display(latest)} ${unitLabel}` : '—'}</span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      <button
+        onClick={openMeasurementsModal}
+        className="w-full py-3 mb-6 border border-dashed border-border-strong rounded-[12px] text-[12px] font-semibold text-accent"
+      >
+        + Log measurements
+      </button>
+
+      <div className="sec">Photos</div>
+
+      <div className="bg-card border border-border rounded-[12px] p-[11px_14px] mb-3 flex items-center gap-3">
+        <span className="text-[10px] text-muted font-semibold whitespace-nowrap">
+          {totalPhotos} / {TOTAL_FREE_PHOTOS} photos
+        </span>
+        <div className="flex-1 h-[3px] bg-[rgba(255,255,255,0.06)] rounded-[2px] overflow-hidden">
+          <div
+            className="h-full bg-accent rounded-[2px]"
+            style={{ width: `${Math.min(100, (totalPhotos / TOTAL_FREE_PHOTOS) * 100)}%` }}
+          />
+        </div>
+        {atLimit && (
+          <button
+            disabled
+            className="bg-[rgba(123,123,255,0.1)] border border-[rgba(123,123,255,0.25)] rounded-[6px] px-[10px] py-[5px] text-[10px] font-bold text-accent whitespace-nowrap cursor-not-allowed"
+          >
+            Unlock ∞
+          </button>
+        )}
+      </div>
+
+      {[...safePhotoSessions].reverse().map((session) => (
+        <div key={session.id} className="mb-3">
+          <div className="text-[10px] font-bold text-muted uppercase tracking-[0.5px] mb-1.5">
+            {session.date}
+          </div>
+          <div className="grid grid-cols-3 gap-1">
+            {['front', 'back', 'side'].map((angle) => (
+              <PhotoSessionThumb
+                key={angle}
+                filename={session[angle]}
+                label={angle}
+                onClick={() => setShowPhotos(true)}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+
+      <button
+        onClick={() => {
+          if (atLimit) {
+            alert(
+              `You've reached the ${TOTAL_FREE_PHOTOS} photo limit. Delete older sessions to add more, or unlock unlimited storage.`
+            )
+            return
+          }
+          setShowPhotos(true)
+        }}
+        className="w-full py-3 mb-8 border border-dashed border-border-strong rounded-[12px] text-[12px] font-semibold text-text flex items-center justify-center gap-1.5"
+      >
+        + Add photos
+      </button>
+
+      {showAddWeight && (
+        <QuickInputModal
+          title="Log weight"
+          placeholder={`e.g. 84.2 ${unitWeight}`}
+          value={newWeight}
+          onChange={setNewWeight}
+          onConfirm={addWeight}
+          onCancel={() => setShowAddWeight(false)}
+          keyboardType="decimal"
+        />
+      )}
+      {showAddBF && (
+        <QuickInputModal
+          title="Log body fat %"
+          placeholder="e.g. 14.2"
+          value={newBF}
+          onChange={setNewBF}
+          onConfirm={addBF}
+          onCancel={() => setShowAddBF(false)}
+          keyboardType="decimal"
+        />
+      )}
+      {showAddMeasurements && (
+        <MeasurementsModal
+          measurements={MEASUREMENTS}
+          values={newMeasurements}
+          onChange={setNewMeasurements}
+          onConfirm={addMeasurements}
+          onCancel={() => setShowAddMeasurements(false)}
+          unitLength={unitLength}
+        />
+      )}
+
+      {showPhotos && (
+        <PhotosModal
+          photoSessions={safePhotoSessions}
+          setPhotoSessions={setPhotoSessions}
+          totalPhotos={totalPhotos}
+          atLimit={atLimit}
+          onClose={() => setShowPhotos(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+function QuickInputModal({ title, placeholder, value, onChange, onConfirm, onCancel, keyboardType }) {
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end justify-center z-50">
+      <div className="w-full max-w-md bg-card rounded-t-3xl p-6 pb-10">
+        <h2 className="text-base font-bold text-center mb-5">{title}</h2>
+        <input
+          type="number"
+          inputMode={keyboardType === 'decimal' ? 'decimal' : 'numeric'}
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={(e) => e.target.select()}
+          onKeyDown={(e) => e.key === 'Enter' && onConfirm()}
+          autoFocus
+          className="w-full bg-card-alt border border-border-strong rounded-xl px-4 py-3 text-text placeholder-muted outline-none focus:border-accent text-center text-lg font-bold mb-4"
+        />
+        <button
+          onClick={onConfirm}
+          disabled={!value}
+          className="w-full py-4 rounded-2xl font-bold text-sm mb-3 bg-gradient-to-r from-accent to-accent-end text-on-accent disabled:opacity-50"
+        >
+          Save
+        </button>
+        <button onClick={onCancel} className="w-full py-3 text-sm font-semibold text-muted">
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function MeasurementsModal({ measurements, values, onChange, onConfirm, onCancel, unitLength = 'cm' }) {
+  const unitLabel = unitLength === 'inch' ? 'inch' : 'cm'
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end justify-center z-50">
+      <div className="w-full max-w-md bg-card rounded-t-3xl p-6 pb-10 max-h-[90vh] overflow-y-auto">
+        <h2 className="text-base font-bold text-center mb-5">Log measurements</h2>
+        {measurements.map(({ key, label }) => (
+          <div key={key} className="flex items-center justify-between mb-3">
+            <span className="text-sm font-semibold text-text">{label}</span>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                inputMode="decimal"
+                placeholder="—"
+                value={values[key] ?? ''}
+                onChange={(e) => onChange((prev) => ({ ...prev, [key]: e.target.value }))}
+                onFocus={(e) => e.target.select()}
+                className="w-20 bg-card-alt border border-border-strong rounded-xl px-3 py-2 text-center text-sm font-bold text-text outline-none focus:border-accent"
+              />
+              <span className="text-xs text-muted">{unitLabel}</span>
+            </div>
+          </div>
+        ))}
+        <button
+          onClick={onConfirm}
+          className="w-full py-4 rounded-2xl font-bold text-sm mt-4 mb-3 bg-gradient-to-r from-accent to-accent-end text-on-accent"
+        >
+          Save measurements
+        </button>
+        <button onClick={onCancel} className="w-full py-3 text-sm font-semibold text-muted">
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function PhotoSessionThumb({ filename, label, onClick }) {
+  const [src, setSrc] = useState(null)
+
+  useEffect(() => {
+    if (!filename) return
+    loadPhotoSrc(filename).then(setSrc).catch(() => {})
+  }, [filename])
+
+  return (
+    <div
+      onClick={onClick}
+      className="aspect-[0.72] bg-card-deep rounded-[10px] flex items-center justify-center relative overflow-hidden cursor-pointer"
+    >
+      {src ? (
+        <img src={src} alt={label} className="w-full h-full object-cover" />
+      ) : (
+        <span className="text-[9px] font-bold text-muted uppercase tracking-[0.5px]">{label}</span>
+      )}
+      <span className="absolute bottom-1.5 left-0 right-0 text-center text-[8px] font-bold text-white/25 uppercase tracking-[0.4px]">
+        {label}
+      </span>
+    </div>
+  )
+}
